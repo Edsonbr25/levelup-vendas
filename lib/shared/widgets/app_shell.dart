@@ -80,6 +80,8 @@ class AppShell extends StatelessWidget {
       body: content,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
         items: [
           for (final item in _destinations)
             BottomNavigationBarItem(icon: Icon(item.icon), label: item.label),

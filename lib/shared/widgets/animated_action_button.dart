@@ -6,11 +6,13 @@ class AnimatedActionButton extends StatefulWidget {
     required this.onPressed,
     required this.icon,
     required this.label,
+    this.expand = false,
   });
 
   final VoidCallback? onPressed;
   final IconData icon;
   final String label;
+  final bool expand;
 
   @override
   State<AnimatedActionButton> createState() => _AnimatedActionButtonState();
@@ -32,10 +34,18 @@ class _AnimatedActionButtonState extends State<AnimatedActionButton> {
       child: AnimatedScale(
         scale: _pressed ? 0.98 : 1,
         duration: const Duration(milliseconds: 120),
-        child: FilledButton.icon(
-          onPressed: widget.onPressed,
-          icon: Icon(widget.icon),
-          label: Text(widget.label),
+        child: SizedBox(
+          width: widget.expand ? double.infinity : null,
+          child: FilledButton.icon(
+            onPressed: widget.onPressed,
+            icon: Icon(widget.icon, size: 18),
+            label: Text(
+              widget.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+            ),
+          ),
         ),
       ),
     );

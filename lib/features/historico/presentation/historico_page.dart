@@ -142,17 +142,38 @@ class _ReportContent extends StatelessWidget {
         if (report.isFallback) ...[
           PremiumCard(
             glowColor: AppTheme.warning,
-            child: Row(
-              children: [
-                const Icon(Icons.cloud_off_rounded, color: AppTheme.warning),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    report.errorMessage ??
-                        'Usando dados locais temporarios para o historico.',
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final message = Text(
+                  report.errorMessage ??
+                      'Usando dados locais temporarios para o historico.',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                );
+                if (constraints.maxWidth < 360) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.cloud_off_rounded,
+                        color: AppTheme.warning,
+                      ),
+                      const SizedBox(height: 10),
+                      message,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_rounded,
+                      color: AppTheme.warning,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: message),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 18),
@@ -257,43 +278,58 @@ class _ExportHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PremiumCard(
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 620;
+          final textContent = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Relatorio ${report.period.label}',
+                maxLines: isMobile ? 2 : 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'PDF profissional com vendas, comissao, desafios, graficos e resumo final.',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Color(0xFFB6C2D3)),
+              ),
+            ],
+          );
+          final button = AnimatedActionButton(
+            onPressed: () async {
+              final pdf = await const HistoricoPdfService().build(report);
+              await Printing.layoutPdf(
+                name:
+                    'levelup-vendas-${report.period.month}-${report.period.year}.pdf',
+                onLayout: (_) async => pdf,
+              );
+            },
+            icon: Icons.picture_as_pdf_rounded,
+            label: 'Exportar PDF',
+            expand: isMobile,
+          );
+
+          if (isMobile) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Relatorio ${report.period.label}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'PDF profissional com vendas, comissao, desafios, graficos e resumo final.',
-                  style: TextStyle(color: Color(0xFFB6C2D3)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 210,
-            child: AnimatedActionButton(
-              onPressed: () async {
-                final pdf = await const HistoricoPdfService().build(report);
-                await Printing.layoutPdf(
-                  name:
-                      'levelup-vendas-${report.period.month}-${report.period.year}.pdf',
-                  onLayout: (_) async => pdf,
-                );
-              },
-              icon: Icons.picture_as_pdf_rounded,
-              label: 'Exportar PDF',
-            ),
-          ),
-        ],
+              children: [textContent, const SizedBox(height: 16), button],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: textContent),
+              const SizedBox(width: 16),
+              SizedBox(width: 220, child: button),
+            ],
+          );
+        },
       ),
     );
   }
