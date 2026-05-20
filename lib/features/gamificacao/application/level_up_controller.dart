@@ -138,6 +138,58 @@ class LevelUpController extends AsyncNotifier<LevelUpState> {
     }
   }
 
+  Future<void> updateChallenge(ChallengeEntry entry) async {
+    final previous = state.value ?? LevelUpState.initialMock();
+    state = const AsyncLoading();
+
+    try {
+      await ref.read(desafiosRepositoryProvider).updateChallenge(entry);
+      final fresh = await ref
+          .read(levelUpRepositoryProvider)
+          .fetchDashboardState();
+      await _saveGamification(fresh);
+      state = AsyncData(fresh);
+    } catch (error) {
+      state = AsyncData(
+        previous.copyWith(
+          challenges: [
+            for (final item in previous.challenges)
+              if (item.id == entry.id) entry else item,
+          ],
+          isFallback: true,
+          errorMessage: error.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> deleteChallenge(ChallengeEntry entry) async {
+    final previous = state.value ?? LevelUpState.initialMock();
+    state = const AsyncLoading();
+
+    try {
+      if (entry.id != null) {
+        await ref.read(desafiosRepositoryProvider).deleteChallenge(entry.id!);
+      }
+      final fresh = await ref
+          .read(levelUpRepositoryProvider)
+          .fetchDashboardState();
+      await _saveGamification(fresh);
+      state = AsyncData(fresh);
+    } catch (error) {
+      state = AsyncData(
+        previous.copyWith(
+          challenges: [
+            for (final item in previous.challenges)
+              if (item != entry) item,
+          ],
+          isFallback: true,
+          errorMessage: error.toString(),
+        ),
+      );
+    }
+  }
+
   Future<LevelUpState> _loadWithFallback() async {
     try {
       final fresh = await ref

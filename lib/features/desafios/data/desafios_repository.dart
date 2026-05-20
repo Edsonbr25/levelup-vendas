@@ -45,6 +45,28 @@ class DesafiosRepository {
         );
   }
 
+  Future<void> updateChallenge(ChallengeEntry entry) async {
+    if (_client == null || entry.id == null) return;
+
+    await _client
+        .from('desafios')
+        .update({
+          'challenge_date': _dateOnly(entry.date),
+          'challenge_type': entry.type.value,
+          'challenge_amount': entry.amount,
+          'notes': entry.notes?.trim().isEmpty ?? true
+              ? null
+              : entry.notes?.trim(),
+        })
+        .eq('id', entry.id!);
+  }
+
+  Future<void> deleteChallenge(String id) async {
+    if (_client == null) return;
+
+    await _client.from('desafios').delete().eq('id', id);
+  }
+
   List<ChallengeEntry> _parseRows(List<dynamic> rows) {
     final entries = <ChallengeEntry>[];
 
@@ -59,5 +81,13 @@ class DesafiosRepository {
 
     entries.sort((a, b) => b.date.compareTo(a.date));
     return entries;
+  }
+
+  String _dateOnly(DateTime date) {
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).toIso8601String().split('T').first;
   }
 }

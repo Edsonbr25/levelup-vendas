@@ -1,11 +1,13 @@
 class ChallengeEntry {
   const ChallengeEntry({
+    this.id,
     required this.date,
     required this.type,
     required this.amount,
     this.notes,
   });
 
+  final String? id;
   final DateTime date;
   final ChallengeType type;
   final double amount;
@@ -25,6 +27,7 @@ class ChallengeEntry {
 
   factory ChallengeEntry.fromSupabase(Map<String, dynamic> row) {
     return ChallengeEntry(
+      id: row['id']?.toString(),
       date:
           DateTime.tryParse(row['challenge_date']?.toString() ?? '') ??
           DateTime.now(),
@@ -91,6 +94,22 @@ class ChallengeEntry {
       date.month,
       date.day,
     ).toIso8601String().split('T').first;
+  }
+
+  ChallengeEntry copyWith({
+    String? id,
+    DateTime? date,
+    ChallengeType? type,
+    double? amount,
+    String? notes,
+  }) {
+    return ChallengeEntry(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      type: type ?? this.type,
+      amount: amount ?? this.amount,
+      notes: notes ?? this.notes,
+    );
   }
 }
 
