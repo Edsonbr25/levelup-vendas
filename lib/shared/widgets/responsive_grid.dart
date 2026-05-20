@@ -23,7 +23,7 @@ class ResponsiveGrid extends StatelessWidget {
             crossAxisCount: columns,
             crossAxisSpacing: 14,
             mainAxisSpacing: 14,
-            mainAxisExtent: 190,
+            mainAxisExtent: constraints.maxWidth < 430 ? 214 : 198,
           ),
           itemBuilder: (context, index) => children[index],
         );

@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../features/gamificacao/application/level_up_controller.dart';
 import '../../../features/gamificacao/domain/level_up_state.dart';
 import '../../../shared/widgets/app_section.dart';
+import '../../../shared/widgets/challenge_summary_card.dart';
 import '../../../shared/widgets/circular_goal_card.dart';
 import '../../../shared/widgets/data_status_banner.dart';
 import '../../../shared/widgets/level_badge.dart';
@@ -34,7 +35,12 @@ class DashboardPage extends ConsumerWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 96),
+      padding: EdgeInsets.fromLTRB(
+        MediaQuery.sizeOf(context).width < 430 ? 14 : 18,
+        18,
+        MediaQuery.sizeOf(context).width < 430 ? 14 : 18,
+        96,
+      ),
       children: [
         DataStatusBanner(
           state: state,
@@ -42,7 +48,27 @@ class DashboardPage extends ConsumerWidget {
           onRefresh: () => ref.read(levelUpProvider.notifier).refresh(),
         ),
         _HeroHeader(state: state),
-        const SizedBox(height: 24),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth >= 760) {
+              return const SizedBox(height: 24);
+            }
+            return Column(
+              children: [
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 268,
+                  child: NextLevelCard(
+                    nextLevel: state.nextLevel,
+                    xpToNext: state.xpToNextLevel,
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            );
+          },
+        ),
         ResponsiveGrid(
           children: [
             StatCard(
@@ -74,28 +100,28 @@ class DashboardPage extends ConsumerWidget {
           title: 'Ganhos em desafios',
           child: ResponsiveGrid(
             children: [
-              StatCard(
+              ChallengeSummaryCard(
                 title: 'Total do mes',
                 value: money(state.monthlyChallengeTotal),
                 subtitle: 'Todos os desafios registrados',
                 icon: Icons.emoji_events_rounded,
                 color: AppTheme.primary,
               ),
-              StatCard(
+              ChallengeSummaryCard(
                 title: 'Meta loja',
                 value: money(state.monthlyStoreGoalChallengeTotal),
                 subtitle: 'Acumulado no mes atual',
                 icon: Icons.store_mall_directory_rounded,
                 color: AppTheme.secondary,
               ),
-              StatCard(
+              ChallengeSummaryCard(
                 title: 'P.A',
                 value: money(state.monthlyPaChallengeTotal),
                 subtitle: 'Acumulado no mes atual',
                 icon: Icons.groups_rounded,
                 color: AppTheme.warning,
               ),
-              StatCard(
+              ChallengeSummaryCard(
                 title: 'Maior boleta',
                 value: money(state.monthlyBiggestTicketChallengeTotal),
                 subtitle: 'Acumulado no mes atual',
@@ -230,20 +256,15 @@ class DashboardPage extends ConsumerWidget {
               nextLevel: state.nextLevel,
               xpToNext: state.xpToNextLevel,
             );
+            if (!isWide) {
+              return xpCard;
+            }
             final rowChildren = [
               Expanded(flex: 2, child: xpCard),
               const SizedBox(width: 14),
               Expanded(child: nextCard),
             ];
-            return isWide
-                ? Row(children: rowChildren)
-                : Column(
-                    children: [
-                      xpCard,
-                      const SizedBox(height: 14),
-                      SizedBox(height: 172, child: nextCard),
-                    ],
-                  );
+            return Row(children: rowChildren);
           },
         ),
       ],
@@ -259,61 +280,108 @@ class _HeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PremiumCard(
-      padding: const EdgeInsets.all(22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 430 ? 18 : 22),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 390;
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppConstants.appName,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w900),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppConstants.appName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                height: 1.05,
+                                fontSize: isCompact ? 34 : null,
+                              ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Edson | Coordenador',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: const Color(0xFFB6C2D3),
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'I Like Mobis - P 15 WALLIG',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: const Color(0xFFB6C2D3),
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${AppConstants.userName} | ${AppConstants.userRole}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFFB6C2D3),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  LevelBadge(level: state.level),
+                ],
               ),
-              LevelBadge(level: state.level),
+              const SizedBox(height: 24),
+              LayoutBuilder(
+                builder: (context, pillConstraints) {
+                  final widePill = _HeroPill(
+                    icon: Icons.payments_rounded,
+                    label: 'Comissao',
+                    value: money(state.estimatedCommission),
+                    color: AppTheme.warning,
+                    fullWidth: true,
+                  );
+                  final xpPill = _HeroPill(
+                    icon: Icons.bolt_rounded,
+                    label: 'XP',
+                    value: '${state.xp}',
+                    color: AppTheme.primary,
+                  );
+                  final streakPill = _HeroPill(
+                    icon: Icons.local_fire_department_rounded,
+                    label: 'Streak',
+                    value: '${state.goalStreak}',
+                    color: AppTheme.danger,
+                  );
+                  if (pillConstraints.maxWidth < 430) {
+                    return Column(
+                      children: [
+                        widePill,
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(child: xpPill),
+                            const SizedBox(width: 12),
+                            Expanded(child: streakPill),
+                          ],
+                        ),
+                      ],
+                    );
+                  }
+                  return Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [widePill, xpPill, streakPill],
+                  );
+                },
+              ),
             ],
-          ),
-          const SizedBox(height: 22),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _HeroPill(
-                icon: Icons.payments_rounded,
-                label: 'Comissao',
-                value: money(state.estimatedCommission),
-                color: AppTheme.warning,
-              ),
-              _HeroPill(
-                icon: Icons.bolt_rounded,
-                label: 'XP',
-                value: '${state.xp}',
-                color: AppTheme.primary,
-              ),
-              _HeroPill(
-                icon: Icons.local_fire_department_rounded,
-                label: 'Streak',
-                value: '${state.goalStreak}',
-                color: AppTheme.danger,
-              ),
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -325,16 +393,19 @@ class _HeroPill extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.fullWidth = false,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final Color color;
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: fullWidth ? double.infinity : null,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
@@ -344,10 +415,11 @@ class _HeroPill extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 240),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
           children: [
             Icon(icon, size: 18, color: color),
             const SizedBox(width: 8),
+            if (fullWidth) const Spacer(),
             Flexible(
               child: Text(
                 label,

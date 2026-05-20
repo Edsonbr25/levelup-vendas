@@ -10,7 +10,8 @@ class LevelBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      constraints: const BoxConstraints(maxWidth: 142),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: AppTheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
@@ -28,9 +29,14 @@ class LevelBadge extends StatelessWidget {
         children: [
           const Icon(Icons.workspace_premium_rounded, size: 18),
           const SizedBox(width: 8),
-          Text(
-            'Nivel $level',
-            style: const TextStyle(fontWeight: FontWeight.w900),
+          Flexible(
+            child: Text(
+              'Nivel $level',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
           ),
         ],
       ),
