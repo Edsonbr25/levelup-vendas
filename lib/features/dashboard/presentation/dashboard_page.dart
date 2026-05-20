@@ -307,16 +307,22 @@ class _HeroHeader extends StatelessWidget {
                               ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'I Like Mobis - P 15 WALLIG',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: const Color(0xFFB6C2D3),
-                                fontWeight: FontWeight.w800,
-                              ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'I Like Mobis - P 15 WALLIG',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    color: const Color(0xFFB6C2D3),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -410,22 +416,28 @@ class _HeroPill extends StatelessWidget {
             const SizedBox(width: 8),
             if (fullWidth) const Spacer(),
             Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: const TextStyle(color: Color(0xFFB6C2D3)),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: const TextStyle(color: Color(0xFFB6C2D3)),
+                ),
               ),
             ),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: const TextStyle(fontWeight: FontWeight.w900),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
               ),
             ),
           ],
