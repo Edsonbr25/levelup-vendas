@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/formatters.dart';
+import '../../../features/gamificacao/application/level_up_controller.dart';
 import '../../../features/gamificacao/domain/level_up_state.dart';
+import '../../../shared/widgets/animated_action_button.dart';
 import '../../../shared/widgets/app_section.dart';
+import '../../../shared/widgets/data_status_banner.dart';
 import '../../../shared/widgets/money_field.dart';
 import '../../../shared/widgets/stat_card.dart';
 
@@ -23,7 +26,7 @@ class _MetasPageState extends ConsumerState<MetasPage> {
   @override
   void initState() {
     super.initState();
-    final state = ref.read(levelUpProvider);
+    final state = ref.read(levelUpProvider).value ?? LevelUpState.initialMock();
     _monthlyIndividual = state.monthlyIndividualGoal;
     _weeklyIndividual = state.weeklyIndividualGoal;
     _monthlyStore = state.monthlyStoreGoal;
@@ -32,11 +35,17 @@ class _MetasPageState extends ConsumerState<MetasPage> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(levelUpProvider);
+    final asyncState = ref.watch(levelUpProvider);
+    final state = asyncState.value ?? LevelUpState.initialMock();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 96),
       children: [
+        DataStatusBanner(
+          state: state,
+          isLoading: asyncState.isLoading,
+          onRefresh: () => ref.read(levelUpProvider.notifier).refresh(),
+        ),
         Text(
           'Metas',
           style: Theme.of(
@@ -52,6 +61,9 @@ class _MetasPageState extends ConsumerState<MetasPage> {
               child: Column(
                 children: [
                   MoneyField(
+                    key: ValueKey(
+                      'monthly-individual-${state.monthlyIndividualGoal}',
+                    ),
                     label: 'Meta mensal individual',
                     initialValue: state.monthlyIndividualGoal,
                     onChanged: (value) =>
@@ -59,36 +71,43 @@ class _MetasPageState extends ConsumerState<MetasPage> {
                   ),
                   const SizedBox(height: 12),
                   MoneyField(
+                    key: ValueKey(
+                      'weekly-individual-${state.weeklyIndividualGoal}',
+                    ),
                     label: 'Meta semanal individual',
                     initialValue: state.weeklyIndividualGoal,
                     onChanged: (value) => _weeklyIndividual = parseMoney(value),
                   ),
                   const SizedBox(height: 12),
                   MoneyField(
+                    key: ValueKey('monthly-store-${state.monthlyStoreGoal}'),
                     label: 'Meta mensal loja',
                     initialValue: state.monthlyStoreGoal,
                     onChanged: (value) => _monthlyStore = parseMoney(value),
                   ),
                   const SizedBox(height: 12),
                   MoneyField(
+                    key: ValueKey('weekly-store-${state.weeklyStoreGoal}'),
                     label: 'Meta semanal loja',
                     initialValue: state.weeklyStoreGoal,
                     onChanged: (value) => _weeklyStore = parseMoney(value),
                   ),
                   const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: () {
-                      ref
-                          .read(levelUpProvider.notifier)
-                          .updateGoals(
-                            monthlyIndividualGoal: _monthlyIndividual,
-                            weeklyIndividualGoal: _weeklyIndividual,
-                            monthlyStoreGoal: _monthlyStore,
-                            weeklyStoreGoal: _weeklyStore,
-                          );
-                    },
-                    icon: const Icon(Icons.save_rounded),
-                    label: const Text('Salvar metas'),
+                  AnimatedActionButton(
+                    onPressed: asyncState.isLoading
+                        ? null
+                        : () async {
+                            await ref
+                                .read(levelUpProvider.notifier)
+                                .updateGoals(
+                                  monthlyIndividualGoal: _monthlyIndividual,
+                                  weeklyIndividualGoal: _weeklyIndividual,
+                                  monthlyStoreGoal: _monthlyStore,
+                                  weeklyStoreGoal: _weeklyStore,
+                                );
+                          },
+                    icon: Icons.save_rounded,
+                    label: 'Salvar metas',
                   ),
                 ],
               ),

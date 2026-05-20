@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import 'premium_card.dart';
 
 class StatCard extends StatelessWidget {
   const StatCard({
@@ -20,9 +21,10 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return PremiumCard(
+      glowColor: color,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

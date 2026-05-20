@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/config/app_env.dart';
 import 'core/theme/app_theme.dart';
 import 'routes/app_router.dart';
+import 'services/supabase_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppEnv.load();
+  await SupabaseService.initialize();
+
   runApp(const ProviderScope(child: LevelUpApp()));
 }
 

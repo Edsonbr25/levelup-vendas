@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../features/gamificacao/application/level_up_controller.dart';
 import '../../../features/gamificacao/domain/level_up_state.dart';
+import '../../../shared/widgets/animated_action_button.dart';
 import '../../../shared/widgets/app_section.dart';
+import '../../../shared/widgets/data_status_banner.dart';
 import '../../../shared/widgets/money_field.dart';
 import '../../../shared/widgets/progress_metric_card.dart';
 import '../../../shared/widgets/stat_card.dart';
@@ -23,18 +26,24 @@ class _VendasPageState extends ConsumerState<VendasPage> {
   @override
   void initState() {
     super.initState();
-    final state = ref.read(levelUpProvider);
+    final state = ref.read(levelUpProvider).value ?? LevelUpState.initialMock();
     _individualSale = state.dailyIndividualSale;
     _storeSale = state.dailyStoreSale;
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(levelUpProvider);
+    final asyncState = ref.watch(levelUpProvider);
+    final state = asyncState.value ?? LevelUpState.initialMock();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 96),
       children: [
+        DataStatusBanner(
+          state: state,
+          isLoading: asyncState.isLoading,
+          onRefresh: () => ref.read(levelUpProvider.notifier).refresh(),
+        ),
         Text(
           'Vendas',
           style: Theme.of(
@@ -50,28 +59,34 @@ class _VendasPageState extends ConsumerState<VendasPage> {
               child: Column(
                 children: [
                   MoneyField(
+                    key: ValueKey(
+                      'individual-sale-${state.dailyIndividualSale}',
+                    ),
                     label: 'Venda individual diaria',
                     initialValue: state.dailyIndividualSale,
                     onChanged: (value) => _individualSale = parseMoney(value),
                   ),
                   const SizedBox(height: 12),
                   MoneyField(
+                    key: ValueKey('store-sale-${state.dailyStoreSale}'),
                     label: 'Venda loja diaria',
                     initialValue: state.dailyStoreSale,
                     onChanged: (value) => _storeSale = parseMoney(value),
                   ),
                   const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: () {
-                      ref
-                          .read(levelUpProvider.notifier)
-                          .updateSales(
-                            dailyIndividualSale: _individualSale,
-                            dailyStoreSale: _storeSale,
-                          );
-                    },
-                    icon: const Icon(Icons.check_circle_rounded),
-                    label: const Text('Atualizar vendas'),
+                  AnimatedActionButton(
+                    onPressed: asyncState.isLoading
+                        ? null
+                        : () async {
+                            await ref
+                                .read(levelUpProvider.notifier)
+                                .updateSales(
+                                  dailyIndividualSale: _individualSale,
+                                  dailyStoreSale: _storeSale,
+                                );
+                          },
+                    icon: Icons.check_circle_rounded,
+                    label: 'Atualizar vendas',
                   ),
                 ],
               ),
@@ -82,20 +97,22 @@ class _VendasPageState extends ConsumerState<VendasPage> {
         ProgressMetricCard(
           title: 'Percentual mensal individual',
           value: state.monthlyIndividualPercent,
-          subtitle: 'Comissao individual: ${state.individualCommissionRate}%',
+          subtitle:
+              '${money(state.monthlyIndividualSales)} no mes | comissao ${state.individualCommissionRate}%',
         ),
         const SizedBox(height: 14),
         ProgressMetricCard(
           title: 'Percentual mensal loja',
           value: state.monthlyStorePercent,
-          subtitle: 'Comissao loja: ${state.storeCommissionRate}%',
+          subtitle:
+              '${money(state.monthlyStoreSales)} no mes | comissao ${state.storeCommissionRate}%',
           color: AppTheme.secondary,
         ),
         const SizedBox(height: 14),
         StatCard(
           title: 'Comissao atualizada',
           value: money(state.estimatedCommission),
-          subtitle: 'Estimativa com a projecao diaria atual',
+          subtitle: 'Calculada com os totais reais do mes',
           icon: Icons.payments_rounded,
           color: AppTheme.warning,
         ),

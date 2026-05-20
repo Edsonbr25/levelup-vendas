@@ -7,10 +7,12 @@ class AppTheme {
   static const background = Color(0xFF090B10);
   static const surface = Color(0xFF11151D);
   static const surfaceAlt = Color(0xFF171C26);
-  static const primary = Color(0xFF36E2A6);
-  static const secondary = Color(0xFF64B5F6);
+  static const primary = Color(0xFF39F0AE);
+  static const secondary = Color(0xFF6CC7FF);
   static const warning = Color(0xFFFFC857);
   static const danger = Color(0xFFFF6B6B);
+  static const graphite = Color(0xFF0D1118);
+  static const border = Color(0xFF242B36);
 
   static ThemeData get dark {
     final base = ThemeData(
@@ -38,7 +40,10 @@ class AppTheme {
         color: surface,
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: border),
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
