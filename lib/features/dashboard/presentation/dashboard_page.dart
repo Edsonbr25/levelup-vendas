@@ -17,7 +17,6 @@ import '../../../shared/widgets/premium_card.dart';
 import '../../../shared/widgets/progress_metric_card.dart';
 import '../../../shared/widgets/responsive_grid.dart';
 import '../../../shared/widgets/sales_chart_card.dart';
-import '../../../shared/widgets/stat_card.dart';
 import '../../../shared/widgets/streak_card.dart';
 import '../../../shared/widgets/xp_progress_card.dart';
 
@@ -48,43 +47,23 @@ class DashboardPage extends ConsumerWidget {
           onRefresh: () => ref.read(levelUpProvider.notifier).refresh(),
         ),
         _HeroHeader(state: state),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth >= 760) {
-              return const SizedBox(height: 24);
-            }
-            return Column(
-              children: [
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 268,
-                  child: NextLevelCard(
-                    nextLevel: state.nextLevel,
-                    xpToNext: state.xpToNextLevel,
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            );
-          },
-        ),
+        const SizedBox(height: 24),
         ResponsiveGrid(
           children: [
-            StatCard(
+            ChallengeSummaryCard(
               title: 'Venda individual hoje',
               value: money(state.dailyIndividualSale),
               subtitle: 'Meta diaria: ${money(state.dailyIndividualGoal)}',
               icon: Icons.person_rounded,
             ),
-            StatCard(
+            ChallengeSummaryCard(
               title: 'Venda loja hoje',
               value: money(state.dailyStoreSale),
               subtitle: 'Meta diaria: ${money(state.dailyStoreGoal)}',
               icon: Icons.storefront_rounded,
               color: AppTheme.secondary,
             ),
-            StatCard(
+            ChallengeSummaryCard(
               title: 'Comissao estimada',
               value: money(state.estimatedCommission),
               subtitle:
@@ -257,7 +236,17 @@ class DashboardPage extends ConsumerWidget {
               xpToNext: state.xpToNextLevel,
             );
             if (!isWide) {
-              return xpCard;
+              return Column(
+                children: [
+                  xpCard,
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 268,
+                    child: nextCard,
+                  ),
+                ],
+              );
             }
             final rowChildren = [
               Expanded(flex: 2, child: xpCard),

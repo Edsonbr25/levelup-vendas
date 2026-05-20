@@ -26,6 +26,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('LevelUp Vendas'), findsWidgets);
+      await tester.scrollUntilVisible(
+        find.text('Proximo nivel'),
+        420,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Proximo nivel'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
