@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/dashboard/presentation/dashboard_page.dart';
 import '../features/desafios/presentation/desafios_page.dart';
+import '../features/historico/presentation/historico_page.dart';
 import '../features/metas/presentation/metas_page.dart';
 import '../features/vendas/presentation/vendas_page.dart';
 import '../shared/widgets/app_shell.dart';
@@ -33,6 +34,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/desafios',
             name: 'desafios',
             builder: (context, state) => const DesafiosPage(),
+          ),
+          GoRoute(
+            path: '/historico',
+            name: 'historico',
+            builder: (context, state) => const HistoricoPage(),
           ),
         ],
       ),

@@ -13,6 +13,7 @@ class AppShell extends StatelessWidget {
     _Destination('Metas', Icons.flag_rounded, '/metas'),
     _Destination('Vendas', Icons.point_of_sale_rounded, '/vendas'),
     _Destination('Desafios', Icons.emoji_events_rounded, '/desafios'),
+    _Destination('Histórico', Icons.history_rounded, '/historico'),
   ];
 
   @override
