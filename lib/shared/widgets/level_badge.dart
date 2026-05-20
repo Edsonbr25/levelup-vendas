@@ -9,37 +9,70 @@ class LevelBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 142),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.28)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.14),
-            blurRadius: 22,
-            spreadRadius: -10,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    final color = _levelColor(level);
+    final icon = _levelIcon(level);
+
+    return SizedBox(
+      width: 74,
+      height: 74,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          const Icon(Icons.workspace_premium_rounded, size: 18),
-          const SizedBox(width: 8),
-          Flexible(
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.16),
+              border: Border.all(color: color.withValues(alpha: 0.65)),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.20),
+                  blurRadius: 18,
+                  spreadRadius: -8,
+                ),
+              ],
+            ),
+            child: Icon(icon, color: color, size: 25),
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
             child: Text(
-              'Nivel $level',
+              level,
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               softWrap: false,
-              style: const TextStyle(fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Color _levelColor(String level) {
+    return switch (level.toLowerCase()) {
+      'bronze' => const Color(0xFFCD7F32),
+      'prata' => const Color(0xFFC7D0DD),
+      'ouro' => AppTheme.warning,
+      'diamante' => AppTheme.secondary,
+      'lenda' => AppTheme.primary,
+      _ => AppTheme.primary,
+    };
+  }
+
+  IconData _levelIcon(String level) {
+    return switch (level.toLowerCase()) {
+      'bronze' => Icons.military_tech_rounded,
+      'prata' => Icons.workspace_premium_rounded,
+      'ouro' => Icons.emoji_events_rounded,
+      'diamante' => Icons.diamond_rounded,
+      'lenda' => Icons.auto_awesome_rounded,
+      _ => Icons.workspace_premium_rounded,
+    };
   }
 }
