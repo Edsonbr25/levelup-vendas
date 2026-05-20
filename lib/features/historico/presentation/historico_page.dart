@@ -220,9 +220,25 @@ class _ReportContent extends StatelessWidget {
             ),
             StatCard(
               title: 'Metas atingidas',
-              value: '${report.goalsReached}/2',
-              subtitle: 'Individual e loja',
+              value: '${report.goalsReached}/4',
+              subtitle: 'Mensais e semanais',
               icon: Icons.flag_rounded,
+            ),
+            StatCard(
+              title: 'Semana individual',
+              value: percent(report.weeklyIndividualPercent),
+              subtitle:
+                  '${money(report.weeklyIndividualSalesTotal)} | ${report.weeklyPeriodLabel}',
+              icon: Icons.date_range_rounded,
+              color: AppTheme.secondary,
+            ),
+            StatCard(
+              title: 'Semana loja',
+              value: percent(report.weeklyStorePercent),
+              subtitle:
+                  '${money(report.weeklyStoreSalesTotal)} | ${report.weeklyPeriodLabel}',
+              icon: Icons.calendar_month_rounded,
+              color: AppTheme.warning,
             ),
           ],
         ),

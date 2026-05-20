@@ -7,6 +7,8 @@ class LevelUpState {
     required this.weeklyIndividualGoal,
     required this.monthlyStoreGoal,
     required this.weeklyStoreGoal,
+    required this.weeklyStartDate,
+    required this.weeklyEndDate,
     required this.dailyIndividualSale,
     required this.dailyStoreSale,
     required this.weeklyIndividualSales,
@@ -27,6 +29,8 @@ class LevelUpState {
       weeklyIndividualGoal: 21250,
       monthlyStoreGoal: 420000,
       weeklyStoreGoal: 105000,
+      weeklyStartDate: DateTime(2026, 5, 18),
+      weeklyEndDate: DateTime(2026, 5, 24),
       dailyIndividualSale: 4200,
       dailyStoreSale: 18600,
       weeklyIndividualSales: 4200 * 5,
@@ -58,11 +62,19 @@ class LevelUpState {
   }
 
   factory LevelUpState.empty() {
-    return const LevelUpState(
+    final now = DateTime.now();
+    final weekStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
+    return LevelUpState(
       monthlyIndividualGoal: 0,
       weeklyIndividualGoal: 0,
       monthlyStoreGoal: 0,
       weeklyStoreGoal: 0,
+      weeklyStartDate: weekStart,
+      weeklyEndDate: weekStart.add(const Duration(days: 6)),
       dailyIndividualSale: 0,
       dailyStoreSale: 0,
       weeklyIndividualSales: 0,
@@ -80,6 +92,8 @@ class LevelUpState {
   final double weeklyIndividualGoal;
   final double monthlyStoreGoal;
   final double weeklyStoreGoal;
+  final DateTime weeklyStartDate;
+  final DateTime weeklyEndDate;
   final double dailyIndividualSale;
   final double dailyStoreSale;
   final double weeklyIndividualSales;
@@ -93,8 +107,17 @@ class LevelUpState {
   final bool isFallback;
   final String? errorMessage;
 
-  double get dailyIndividualGoal => monthlyIndividualGoal / 22;
-  double get dailyStoreGoal => monthlyStoreGoal / 22;
+  int get weeklyPeriodDays {
+    final start = _dateOnly(weeklyStartDate);
+    final end = _dateOnly(weeklyEndDate);
+    if (end.isBefore(start)) return 1;
+    return end.difference(start).inDays + 1;
+  }
+
+  double get dailyIndividualGoal => weeklyIndividualGoal / weeklyPeriodDays;
+  double get dailyStoreGoal => weeklyStoreGoal / weeklyPeriodDays;
+  String get weeklyPeriodLabel =>
+      '${_shortDate(weeklyStartDate)} a ${_shortDate(weeklyEndDate)}';
   double get dailyIndividualPercent =>
       _ratio(dailyIndividualSale, dailyIndividualGoal);
   double get dailyStorePercent => _ratio(dailyStoreSale, dailyStoreGoal);
@@ -254,6 +277,8 @@ class LevelUpState {
     double? weeklyIndividualGoal,
     double? monthlyStoreGoal,
     double? weeklyStoreGoal,
+    DateTime? weeklyStartDate,
+    DateTime? weeklyEndDate,
     double? dailyIndividualSale,
     double? dailyStoreSale,
     double? weeklyIndividualSales,
@@ -273,6 +298,8 @@ class LevelUpState {
       weeklyIndividualGoal: weeklyIndividualGoal ?? this.weeklyIndividualGoal,
       monthlyStoreGoal: monthlyStoreGoal ?? this.monthlyStoreGoal,
       weeklyStoreGoal: weeklyStoreGoal ?? this.weeklyStoreGoal,
+      weeklyStartDate: weeklyStartDate ?? this.weeklyStartDate,
+      weeklyEndDate: weeklyEndDate ?? this.weeklyEndDate,
       dailyIndividualSale: dailyIndividualSale ?? this.dailyIndividualSale,
       dailyStoreSale: dailyStoreSale ?? this.dailyStoreSale,
       weeklyIndividualSales:
@@ -294,6 +321,16 @@ class LevelUpState {
   static double _ratio(double value, double target) {
     if (target <= 0) return 0;
     return (value / target) * 100;
+  }
+
+  static DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  static String _shortDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
   }
 
   static List<double> _series({

@@ -29,6 +29,8 @@ class MetasRepository {
     required double weeklyIndividualGoal,
     required double monthlyStoreGoal,
     required double weeklyStoreGoal,
+    required DateTime weeklyStartDate,
+    required DateTime weeklyEndDate,
   }) async {
     if (_client == null) return;
 
@@ -37,7 +39,17 @@ class MetasRepository {
       'weekly_individual_goal': weeklyIndividualGoal,
       'monthly_store_goal': monthlyStoreGoal,
       'weekly_store_goal': weeklyStoreGoal,
+      'weekly_start_date': _dateOnly(weeklyStartDate),
+      'weekly_end_date': _dateOnly(weeklyEndDate),
       'created_at': DateTime.now().toIso8601String(),
     });
+  }
+
+  String _dateOnly(DateTime date) {
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).toIso8601String().split('T').first;
   }
 }

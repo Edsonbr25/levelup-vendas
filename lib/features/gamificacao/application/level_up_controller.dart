@@ -29,6 +29,8 @@ class LevelUpController extends AsyncNotifier<LevelUpState> {
     required double weeklyIndividualGoal,
     required double monthlyStoreGoal,
     required double weeklyStoreGoal,
+    required DateTime weeklyStartDate,
+    required DateTime weeklyEndDate,
   }) async {
     final previous = state.value ?? LevelUpState.initialMock();
     state = const AsyncLoading();
@@ -41,6 +43,8 @@ class LevelUpController extends AsyncNotifier<LevelUpState> {
             weeklyIndividualGoal: weeklyIndividualGoal,
             monthlyStoreGoal: monthlyStoreGoal,
             weeklyStoreGoal: weeklyStoreGoal,
+            weeklyStartDate: weeklyStartDate,
+            weeklyEndDate: weeklyEndDate,
           );
 
       final fresh = await ref
@@ -55,6 +59,8 @@ class LevelUpController extends AsyncNotifier<LevelUpState> {
           weeklyIndividualGoal: weeklyIndividualGoal,
           monthlyStoreGoal: monthlyStoreGoal,
           weeklyStoreGoal: weeklyStoreGoal,
+          weeklyStartDate: weeklyStartDate,
+          weeklyEndDate: weeklyEndDate,
           isFallback: true,
           errorMessage: error.toString(),
         ),

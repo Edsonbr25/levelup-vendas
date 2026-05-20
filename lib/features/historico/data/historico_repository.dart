@@ -41,6 +41,23 @@ class HistoricoRepository {
     final metas = metasRows.isEmpty
         ? <String, dynamic>{}
         : Map<String, dynamic>.from(metasRows.first);
+    final defaultWeekStart = period.start;
+    final defaultWeekEnd = DateTime(
+      period.year,
+      period.month,
+      period.daysInMonth < 7 ? period.daysInMonth : 7,
+    );
+    final weeklyStartDate = _validDate(
+      metas['weekly_start_date'],
+      defaultWeekStart,
+    );
+    final parsedWeeklyEndDate = _validDate(
+      metas['weekly_end_date'],
+      defaultWeekEnd,
+    );
+    final weeklyEndDate = parsedWeeklyEndDate.isBefore(weeklyStartDate)
+        ? weeklyStartDate
+        : parsedWeeklyEndDate;
     final salesByDay = <int, DaySales>{};
     var individualTotal = 0.0;
     var storeTotal = 0.0;
@@ -64,6 +81,8 @@ class HistoricoRepository {
       weeklyIndividualGoal: _toDouble(metas['weekly_individual_goal']),
       monthlyStoreGoal: _toDouble(metas['monthly_store_goal']),
       weeklyStoreGoal: _toDouble(metas['weekly_store_goal']),
+      weeklyStartDate: weeklyStartDate,
+      weeklyEndDate: weeklyEndDate,
       individualSalesTotal: individualTotal,
       storeSalesTotal: storeTotal,
       challenges: _parseChallenges(desafiosRows),
@@ -97,5 +116,11 @@ class HistoricoRepository {
       date.month,
       date.day,
     ).toIso8601String().split('T').first;
+  }
+
+  DateTime _validDate(Object? value, DateTime fallback) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+    if (parsed == null) return fallback;
+    return DateTime(parsed.year, parsed.month, parsed.day);
   }
 }

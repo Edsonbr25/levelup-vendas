@@ -7,6 +7,8 @@ class HistoricalReport {
     required this.weeklyIndividualGoal,
     required this.monthlyStoreGoal,
     required this.weeklyStoreGoal,
+    required this.weeklyStartDate,
+    required this.weeklyEndDate,
     required this.individualSalesTotal,
     required this.storeSalesTotal,
     required this.challenges,
@@ -31,6 +33,8 @@ class HistoricalReport {
       weeklyIndividualGoal: 21250,
       monthlyStoreGoal: 420000,
       weeklyStoreGoal: 105000,
+      weeklyStartDate: DateTime(period.year, period.month, 1),
+      weeklyEndDate: DateTime(period.year, period.month, 7),
       individualSalesTotal: salesByDay.values.fold(
         0,
         (total, item) => total + item.individual,
@@ -67,6 +71,8 @@ class HistoricalReport {
   final double weeklyIndividualGoal;
   final double monthlyStoreGoal;
   final double weeklyStoreGoal;
+  final DateTime weeklyStartDate;
+  final DateTime weeklyEndDate;
   final double individualSalesTotal;
   final double storeSalesTotal;
   final List<ChallengeEntry> challenges;
@@ -80,6 +86,27 @@ class HistoricalReport {
       _ratio(individualSalesTotal, monthlyIndividualGoal);
 
   double get storePercent => _ratio(storeSalesTotal, monthlyStoreGoal);
+
+  double get weeklyIndividualSalesTotal =>
+      _weeklySalesTotal((sales) => sales.individual);
+
+  double get weeklyStoreSalesTotal => _weeklySalesTotal((sales) => sales.store);
+
+  double get weeklyIndividualPercent =>
+      _ratio(weeklyIndividualSalesTotal, weeklyIndividualGoal);
+
+  double get weeklyStorePercent =>
+      _ratio(weeklyStoreSalesTotal, weeklyStoreGoal);
+
+  int get weeklyPeriodDays {
+    final start = _dateOnly(weeklyStartDate);
+    final end = _dateOnly(weeklyEndDate);
+    if (end.isBefore(start)) return 1;
+    return end.difference(start).inDays + 1;
+  }
+
+  String get weeklyPeriodLabel =>
+      '${_shortDate(weeklyStartDate)} a ${_shortDate(weeklyEndDate)}';
 
   double get individualCommissionRate {
     if (individualPercent >= 120) return 6;
@@ -115,6 +142,8 @@ class HistoricalReport {
     var total = 0;
     if (individualPercent >= 100) total++;
     if (storePercent >= 100) total++;
+    if (weeklyIndividualPercent >= 100) total++;
+    if (weeklyStorePercent >= 100) total++;
     return total;
   }
 
@@ -123,8 +152,13 @@ class HistoricalReport {
     var current = 0;
     for (final day in salesByDay.keys.toList()..sort()) {
       final sales = salesByDay[day]!;
-      final dailyIndividualGoal = monthlyIndividualGoal / period.daysInMonth;
-      final dailyStoreGoal = monthlyStoreGoal / period.daysInMonth;
+      final date = DateTime(period.year, period.month, day);
+      final dailyIndividualGoal = _isInsideWeeklyPeriod(date)
+          ? weeklyIndividualGoal / weeklyPeriodDays
+          : monthlyIndividualGoal / period.daysInMonth;
+      final dailyStoreGoal = _isInsideWeeklyPeriod(date)
+          ? weeklyStoreGoal / weeklyPeriodDays
+          : monthlyStoreGoal / period.daysInMonth;
       if (sales.individual >= dailyIndividualGoal ||
           sales.store >= dailyStoreGoal) {
         current++;
@@ -164,6 +198,32 @@ class HistoricalReport {
   static double _ratio(double value, double target) {
     if (target <= 0) return 0;
     return (value / target) * 100;
+  }
+
+  double _weeklySalesTotal(double Function(DaySales sales) selector) {
+    return salesByDay.entries
+        .where((entry) {
+          final date = DateTime(period.year, period.month, entry.key);
+          return _isInsideWeeklyPeriod(date);
+        })
+        .fold(0, (total, entry) => total + selector(entry.value));
+  }
+
+  bool _isInsideWeeklyPeriod(DateTime value) {
+    final date = _dateOnly(value);
+    final start = _dateOnly(weeklyStartDate);
+    final end = _dateOnly(weeklyEndDate);
+    return !date.isBefore(start) && !date.isAfter(end);
+  }
+
+  static DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  static String _shortDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
   }
 }
 

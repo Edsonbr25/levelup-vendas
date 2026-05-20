@@ -53,13 +53,14 @@ class DashboardPage extends ConsumerWidget {
             ChallengeSummaryCard(
               title: 'Venda individual hoje',
               value: money(state.dailyIndividualSale),
-              subtitle: 'Meta diaria: ${money(state.dailyIndividualGoal)}',
+              subtitle:
+                  'Meta diaria semanal: ${money(state.dailyIndividualGoal)}',
               icon: Icons.person_rounded,
             ),
             ChallengeSummaryCard(
               title: 'Venda loja hoje',
               value: money(state.dailyStoreSale),
-              subtitle: 'Meta diaria: ${money(state.dailyStoreGoal)}',
+              subtitle: 'Meta diaria semanal: ${money(state.dailyStoreGoal)}',
               icon: Icons.storefront_rounded,
               color: AppTheme.secondary,
             ),
@@ -116,7 +117,7 @@ class DashboardPage extends ConsumerWidget {
             final isWide = constraints.maxWidth >= 820;
             final weeklyChart = SalesChartCard(
               title: 'Vendas da semana',
-              subtitle: 'Individual e loja por dia',
+              subtitle: state.weeklyPeriodLabel,
               primaryValues: state.weeklyIndividualChart,
               secondaryValues: state.weeklyStoreChart,
               primaryLabel: 'Eu',
@@ -200,7 +201,7 @@ class DashboardPage extends ConsumerWidget {
                     title: 'Semanal individual',
                     value: state.weeklyIndividualPercent,
                     subtitle:
-                        '${money(state.weeklyIndividualSales)} realizados',
+                        '${money(state.weeklyIndividualSales)} | ${state.weeklyPeriodLabel}',
                     color: AppTheme.secondary,
                   ),
                   ProgressMetricCard(
@@ -212,7 +213,8 @@ class DashboardPage extends ConsumerWidget {
                   ProgressMetricCard(
                     title: 'Semanal loja',
                     value: state.weeklyStorePercent,
-                    subtitle: '${money(state.weeklyStoreSales)} realizados',
+                    subtitle:
+                        '${money(state.weeklyStoreSales)} | ${state.weeklyPeriodLabel}',
                     color: AppTheme.danger,
                   ),
                 ],

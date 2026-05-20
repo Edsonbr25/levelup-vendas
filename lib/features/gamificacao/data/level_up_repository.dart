@@ -24,7 +24,6 @@ class LevelUpRepository {
     final empty = LevelUpState.empty();
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month);
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
     final today = DateTime(now.year, now.month, now.day);
 
     final metasRows = await _client
@@ -32,10 +31,29 @@ class LevelUpRepository {
         .select()
         .order('created_at', ascending: false)
         .limit(1);
+    final metas = metasRows.isEmpty
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(metasRows.first);
+    final defaultWeekStart = today.subtract(Duration(days: today.weekday - 1));
+    final defaultWeekEnd = defaultWeekStart.add(const Duration(days: 6));
+    final weeklyStartDate = _validDate(
+      metas['weekly_start_date'],
+      defaultWeekStart,
+    );
+    final parsedWeeklyEndDate = _validDate(
+      metas['weekly_end_date'],
+      defaultWeekEnd,
+    );
+    final weeklyEndDate = parsedWeeklyEndDate.isBefore(weeklyStartDate)
+        ? weeklyStartDate
+        : parsedWeeklyEndDate;
+    final queryStart = weeklyStartDate.isBefore(monthStart)
+        ? weeklyStartDate
+        : monthStart;
     final vendasRows = await _client
         .from('vendas')
         .select()
-        .gte('sale_date', _dateOnly(monthStart))
+        .gte('sale_date', _dateOnly(queryStart))
         .order('sale_date', ascending: false);
     final desafiosRows = await _client
         .from('desafios')
@@ -43,9 +61,6 @@ class LevelUpRepository {
         .order('created_at', ascending: false)
         .limit(200);
 
-    final metas = metasRows.isEmpty
-        ? <String, dynamic>{}
-        : Map<String, dynamic>.from(metasRows.first);
     final challenges = _parseChallenges(desafiosRows);
 
     var dailyIndividualSale = 0.0;
@@ -60,10 +75,12 @@ class LevelUpRepository {
       final individual = _toDouble(row['daily_individual_sale']);
       final store = _toDouble(row['daily_store_sale']);
 
-      monthlyIndividualSales += individual;
-      monthlyStoreSales += store;
+      if (!saleDate.isBefore(monthStart)) {
+        monthlyIndividualSales += individual;
+        monthlyStoreSales += store;
+      }
 
-      if (!saleDate.isBefore(weekStart)) {
+      if (_isInsideInclusive(saleDate, weeklyStartDate, weeklyEndDate)) {
         weeklyIndividualSales += individual;
         weeklyStoreSales += store;
       }
@@ -91,6 +108,8 @@ class LevelUpRepository {
         metas['weekly_store_goal'],
         empty.weeklyStoreGoal,
       ),
+      weeklyStartDate: weeklyStartDate,
+      weeklyEndDate: weeklyEndDate,
       dailyIndividualSale: dailyIndividualSale,
       dailyStoreSale: dailyStoreSale,
       weeklyIndividualSales: weeklyIndividualSales,
@@ -134,8 +153,19 @@ class LevelUpRepository {
     return DateTime.tryParse(value.toString()) ?? DateTime(1900);
   }
 
+  DateTime _validDate(Object? value, DateTime fallback) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+    if (parsed == null) return fallback;
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  bool _isInsideInclusive(DateTime value, DateTime start, DateTime end) {
+    final date = DateTime(value.year, value.month, value.day);
+    return !date.isBefore(start) && !date.isAfter(end);
   }
 
   double _toDouble(Object? value, [double fallback = 0]) {
