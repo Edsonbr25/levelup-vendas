@@ -1,3 +1,4 @@
+import '../../../core/utils/commission_calculator.dart';
 import '../../desafios/domain/challenge_entry.dart';
 
 class HistoricalReport {
@@ -109,23 +110,27 @@ class HistoricalReport {
       '${_shortDate(weeklyStartDate)} a ${_shortDate(weeklyEndDate)}';
 
   double get individualCommissionRate {
-    if (individualPercent >= 120) return 6;
-    if (individualPercent >= 100) return 5;
-    if (individualPercent >= 90) return 3;
-    return 0;
+    return individualCommissionResult.appliedRate;
   }
 
   double get storeCommissionRate {
-    if (storePercent >= 120) return 3;
-    if (storePercent >= 100) return 2;
-    if (storePercent >= 95) return 0.5;
-    return 0;
+    return storeCommissionResult.appliedRate;
   }
 
-  double get individualCommission =>
-      individualSalesTotal * (individualCommissionRate / 100);
+  CommissionResult get individualCommissionResult =>
+      CommissionCalculator.individual(
+        sales: individualSalesTotal,
+        goal: monthlyIndividualGoal,
+      );
 
-  double get storeCommission => storeSalesTotal * (storeCommissionRate / 100);
+  CommissionResult get storeCommissionResult => CommissionCalculator.store(
+    sales: storeSalesTotal,
+    goal: monthlyStoreGoal,
+  );
+
+  double get individualCommission => individualCommissionResult.commission;
+
+  double get storeCommission => storeCommissionResult.commission;
 
   double get estimatedCommission => individualCommission + storeCommission;
 

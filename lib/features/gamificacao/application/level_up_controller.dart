@@ -5,6 +5,7 @@ import '../../desafios/data/desafios_repository.dart';
 import '../../desafios/domain/challenge_entry.dart';
 import '../../metas/data/metas_repository.dart';
 import '../../vendas/data/vendas_repository.dart';
+import '../../vendas/domain/sale_entry.dart';
 import '../data/gamificacao_repository.dart';
 import '../data/level_up_repository.dart';
 import '../domain/level_up_state.dart';
@@ -71,6 +72,7 @@ class LevelUpController extends AsyncNotifier<LevelUpState> {
   Future<void> updateSales({
     required double dailyIndividualSale,
     required double dailyStoreSale,
+    DateTime? saleDate,
   }) async {
     final previous = state.value ?? LevelUpState.initialMock();
     state = const AsyncLoading();
@@ -81,6 +83,7 @@ class LevelUpController extends AsyncNotifier<LevelUpState> {
           .saveDailySales(
             dailyIndividualSale: dailyIndividualSale,
             dailyStoreSale: dailyStoreSale,
+            saleDate: saleDate,
           );
 
       final fresh = await ref
@@ -102,6 +105,65 @@ class LevelUpController extends AsyncNotifier<LevelUpState> {
           isFallback: true,
           errorMessage: error.toString(),
         ),
+      );
+    }
+  }
+
+  Future<void> createSale(SaleEntry sale) async {
+    final previous = state.value ?? LevelUpState.initialMock();
+    state = const AsyncLoading();
+
+    try {
+      await ref.read(vendasRepositoryProvider).createSale(sale);
+      final fresh = await ref
+          .read(levelUpRepositoryProvider)
+          .fetchDashboardState();
+      await _saveGamification(fresh);
+      state = AsyncData(fresh);
+    } catch (error) {
+      state = AsyncData(
+        _applySaleFallback(
+          previous,
+          sale,
+        ).copyWith(isFallback: true, errorMessage: error.toString()),
+      );
+    }
+  }
+
+  Future<void> updateSale(SaleEntry sale) async {
+    final previous = state.value ?? LevelUpState.initialMock();
+    state = const AsyncLoading();
+
+    try {
+      await ref.read(vendasRepositoryProvider).updateSale(sale);
+      final fresh = await ref
+          .read(levelUpRepositoryProvider)
+          .fetchDashboardState();
+      await _saveGamification(fresh);
+      state = AsyncData(fresh);
+    } catch (error) {
+      state = AsyncData(
+        previous.copyWith(isFallback: true, errorMessage: error.toString()),
+      );
+    }
+  }
+
+  Future<void> deleteSale(SaleEntry sale) async {
+    final previous = state.value ?? LevelUpState.initialMock();
+    state = const AsyncLoading();
+
+    try {
+      if (sale.id != null) {
+        await ref.read(vendasRepositoryProvider).deleteSale(sale.id!);
+      }
+      final fresh = await ref
+          .read(levelUpRepositoryProvider)
+          .fetchDashboardState();
+      await _saveGamification(fresh);
+      state = AsyncData(fresh);
+    } catch (error) {
+      state = AsyncData(
+        previous.copyWith(isFallback: true, errorMessage: error.toString()),
       );
     }
   }
@@ -216,5 +278,40 @@ class LevelUpController extends AsyncNotifier<LevelUpState> {
     await ref
         .read(gamificacaoRepositoryProvider)
         .saveProgress(xp: state.xp, level: state.level);
+  }
+
+  LevelUpState _applySaleFallback(LevelUpState previous, SaleEntry sale) {
+    final today = DateTime.now();
+    final saleDate = DateTime(sale.date.year, sale.date.month, sale.date.day);
+    final currentMonth =
+        saleDate.year == today.year && saleDate.month == today.month;
+    final inWeek =
+        !saleDate.isBefore(previous.weeklyStartDate) &&
+        !saleDate.isAfter(previous.weeklyEndDate);
+    final isToday =
+        saleDate.year == today.year &&
+        saleDate.month == today.month &&
+        saleDate.day == today.day;
+
+    return previous.copyWith(
+      dailyIndividualSale: isToday
+          ? previous.dailyIndividualSale + sale.individualSale
+          : previous.dailyIndividualSale,
+      dailyStoreSale: isToday
+          ? previous.dailyStoreSale + sale.storeSale
+          : previous.dailyStoreSale,
+      weeklyIndividualSales: inWeek
+          ? previous.weeklyIndividualSales + sale.individualSale
+          : previous.weeklyIndividualSales,
+      weeklyStoreSales: inWeek
+          ? previous.weeklyStoreSales + sale.storeSale
+          : previous.weeklyStoreSales,
+      monthlyIndividualSales: currentMonth
+          ? previous.monthlyIndividualSales + sale.individualSale
+          : previous.monthlyIndividualSales,
+      monthlyStoreSales: currentMonth
+          ? previous.monthlyStoreSales + sale.storeSale
+          : previous.monthlyStoreSales,
+    );
   }
 }

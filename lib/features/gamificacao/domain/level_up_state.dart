@@ -1,4 +1,5 @@
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/commission_calculator.dart';
 import '../../desafios/domain/challenge_entry.dart';
 
 class LevelUpState {
@@ -129,27 +130,29 @@ class LevelUpState {
   double get monthlyStorePercent => _ratio(monthlyStoreSales, monthlyStoreGoal);
 
   double get individualCommissionRate {
-    final reached = monthlyIndividualPercent;
-    if (reached >= 120) return 6;
-    if (reached >= 100) return 5;
-    if (reached >= 90) return 3;
-    return 0;
+    return individualCommission.appliedRate;
   }
 
   double get storeCommissionRate {
-    final reached = monthlyStorePercent;
-    if (reached >= 120) return 3;
-    if (reached >= 100) return 2;
-    if (reached >= 95) return 0.5;
-    return 0;
+    return storeCommission.appliedRate;
   }
 
-  double get estimatedCommission {
-    final individual =
-        monthlyIndividualSales * (individualCommissionRate / 100);
-    final store = monthlyStoreSales * (storeCommissionRate / 100);
-    return individual + store;
-  }
+  CommissionResult get individualCommission => CommissionCalculator.individual(
+    sales: monthlyIndividualSales,
+    goal: monthlyIndividualGoal,
+  );
+
+  CommissionResult get storeCommission => CommissionCalculator.store(
+    sales: monthlyStoreSales,
+    goal: monthlyStoreGoal,
+  );
+
+  double get individualCommissionValue => individualCommission.commission;
+
+  double get storeCommissionValue => storeCommission.commission;
+
+  double get estimatedCommission =>
+      individualCommissionValue + storeCommissionValue;
 
   int get xp {
     final dailyXp = dailyIndividualSale >= dailyIndividualGoal

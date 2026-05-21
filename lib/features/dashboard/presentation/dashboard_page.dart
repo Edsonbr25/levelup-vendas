@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/commission_calculator.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../features/gamificacao/application/level_up_controller.dart';
 import '../../../features/gamificacao/domain/level_up_state.dart';
@@ -64,17 +65,11 @@ class DashboardPage extends ConsumerWidget {
               icon: Icons.storefront_rounded,
               color: AppTheme.secondary,
             ),
-            ChallengeSummaryCard(
-              title: 'Comissao estimada',
-              value: money(state.estimatedCommission),
-              subtitle:
-                  'Ind. ${state.individualCommissionRate}% | Loja ${state.storeCommissionRate}%',
-              icon: Icons.payments_rounded,
-              color: AppTheme.warning,
-            ),
             StreakCard(streak: state.goalStreak),
           ],
         ),
+        const SizedBox(height: 24),
+        _CommissionCurrentCard(state: state),
         const SizedBox(height: 24),
         AppSection(
           title: 'Ganhos em desafios',
@@ -259,6 +254,287 @@ class DashboardPage extends ConsumerWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _CommissionCurrentCard extends StatelessWidget {
+  const _CommissionCurrentCard({required this.state});
+
+  final LevelUpState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final individual = state.individualCommission;
+    final store = state.storeCommission;
+
+    return PremiumCard(
+      glowColor: AppTheme.warning,
+      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 430 ? 16 : 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 520;
+              final title = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Comissao atual',
+                    style: TextStyle(
+                      color: Color(0xFFB6C2D3),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    money(state.estimatedCommission),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              );
+              final message = _CommissionMessage(
+                result: _messageResult(individual, store),
+              );
+
+              if (isCompact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [title, const SizedBox(height: 12), message],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: title),
+                  const SizedBox(width: 16),
+                  Expanded(child: message),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 720;
+              final individualCard = _CommissionDetailCard(
+                title: 'Individual',
+                result: individual,
+                color: AppTheme.primary,
+              );
+              final storeCard = _CommissionDetailCard(
+                title: 'Loja',
+                result: store,
+                color: AppTheme.secondary,
+              );
+
+              return isWide
+                  ? Row(
+                      children: [
+                        Expanded(child: individualCard),
+                        const SizedBox(width: 12),
+                        Expanded(child: storeCard),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        individualCard,
+                        const SizedBox(height: 12),
+                        storeCard,
+                      ],
+                    );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  CommissionResult _messageResult(
+    CommissionResult individual,
+    CommissionResult store,
+  ) {
+    if (!individual.isCommissioning && !store.isCommissioning) {
+      return individual.amountToFirstBand <= store.amountToFirstBand
+          ? individual
+          : store;
+    }
+
+    final candidates = [
+      individual,
+      store,
+    ].where((result) => result.hasNextBand).toList();
+    if (candidates.isEmpty) {
+      return individual.commission >= store.commission ? individual : store;
+    }
+
+    candidates.sort((a, b) => a.amountToNextBand.compareTo(b.amountToNextBand));
+    return candidates.first;
+  }
+}
+
+class _CommissionMessage extends StatelessWidget {
+  const _CommissionMessage({required this.result});
+
+  final CommissionResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = !result.isCommissioning
+        ? 'Faltam ${money(result.amountToFirstBand)} para começar a comissionar'
+        : result.hasNextBand
+        ? 'Faltam ${money(result.amountToNextBand)} para proxima faixa'
+        : 'Voce ja esta comissionando nesta faixa';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.warning.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppTheme.warning,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _CommissionDetailCard extends StatelessWidget {
+  const _CommissionDetailCard({
+    required this.title,
+    required this.result,
+    required this.color,
+  });
+
+  final String title;
+  final CommissionResult result;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFB6C2D3),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              _RateBadge(rate: result.appliedRate, color: color),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _CommissionLine(label: 'Venda no mes', value: money(result.sales)),
+          const SizedBox(height: 6),
+          _CommissionLine(
+            label: 'Meta atingida',
+            value: percent(result.percentReached),
+          ),
+          const SizedBox(height: 6),
+          _CommissionLine(
+            label: 'Comissao',
+            value: money(result.commission),
+            strong: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommissionLine extends StatelessWidget {
+  const _CommissionLine({
+    required this.label,
+    required this.value,
+    this.strong = false,
+  });
+
+  final String label;
+  final String value;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFFB6C2D3)),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontWeight: strong ? FontWeight.w900 : FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RateBadge extends StatelessWidget {
+  const _RateBadge({required this.rate, required this.color});
+
+  final double rate;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Text(
+        formatRate(rate),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }
