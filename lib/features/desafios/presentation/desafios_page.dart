@@ -204,6 +204,9 @@ class _DesafiosPageState extends ConsumerState<DesafiosPage> {
   Future<void> _saveChallenge() async {
     final amount = parseMoney(_amountController.text);
     if (amount <= 0) return;
+    final previousXp =
+        ref.read(levelUpProvider).value?.xp ?? LevelUpState.initialMock().xp;
+    final challengeType = _type;
 
     await ref
         .read(levelUpProvider.notifier)
@@ -214,8 +217,242 @@ class _DesafiosPageState extends ConsumerState<DesafiosPage> {
           notes: _notesController.text,
         );
 
+    final currentXp = ref.read(levelUpProvider).value?.xp ?? previousXp;
+    final gainedXp = (currentXp - previousXp)
+        .clamp(_challengeXp(challengeType), 999)
+        .toInt();
+    if (mounted) {
+      _showXpGainAnimation(gainedXp, challengeType.label);
+    }
+
     _amountController.clear();
     _notesController.clear();
+  }
+
+  int _challengeXp(ChallengeType type) {
+    return switch (type) {
+      ChallengeType.storeGoal => 50,
+      ChallengeType.pa => 25,
+      ChallengeType.biggestTicket => 40,
+    };
+  }
+
+  void _showXpGainAnimation(int xp, String label) {
+    final overlay = Overlay.of(context);
+    late final OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (context) => _XpGainOverlay(
+        xp: xp,
+        label: label,
+        onCompleted: () => entry.remove(),
+      ),
+    );
+
+    overlay.insert(entry);
+  }
+}
+
+class _XpGainOverlay extends StatefulWidget {
+  const _XpGainOverlay({
+    required this.xp,
+    required this.label,
+    required this.onCompleted,
+  });
+
+  final int xp;
+  final String label;
+  final VoidCallback onCompleted;
+
+  @override
+  State<_XpGainOverlay> createState() => _XpGainOverlayState();
+}
+
+class _XpGainOverlayState extends State<_XpGainOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _scale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.82,
+          end: 1.08,
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 45,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.08,
+          end: 1,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 25,
+      ),
+      TweenSequenceItem(tween: ConstantTween<double>(1), weight: 30),
+    ]).animate(_controller);
+    _opacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0, end: 1), weight: 20),
+      TweenSequenceItem(tween: ConstantTween<double>(1), weight: 55),
+      TweenSequenceItem(tween: Tween<double>(begin: 1, end: 0), weight: 25),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _slide = TweenSequence<Offset>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: const Offset(0, 0.18),
+          end: Offset.zero,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 45,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: Offset.zero,
+          end: const Offset(0, -0.1),
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 55,
+      ),
+    ]).animate(_controller);
+
+    _controller.forward().whenComplete(widget.onCompleted);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.paddingOf(context).top;
+
+    return IgnorePointer(
+      child: Material(
+        color: Colors.transparent,
+        child: SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(18, topPadding > 0 ? 12 : 18, 18, 0),
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _opacity.value,
+                    child: SlideTransition(
+                      position: _slide,
+                      child: Transform.scale(scale: _scale.value, child: child),
+                    ),
+                  );
+                },
+                child: _XpGainCardShell(xp: widget.xp, label: widget.label),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _XpGainCardShell extends StatelessWidget {
+  const _XpGainCardShell({required this.xp, required this.label});
+
+  final int xp;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 420),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.34)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.22),
+            blurRadius: 34,
+            spreadRadius: -10,
+            offset: const Offset(0, 18),
+          ),
+          BoxShadow(
+            color: AppTheme.warning.withValues(alpha: 0.16),
+            blurRadius: 24,
+            spreadRadius: -12,
+          ),
+        ],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primary.withValues(alpha: 0.16),
+            AppTheme.surface,
+            AppTheme.warning.withValues(alpha: 0.08),
+          ],
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.24),
+              ),
+            ),
+            child: const Icon(
+              Icons.bolt_rounded,
+              color: AppTheme.primary,
+              size: 34,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Flexible(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '+$xp XP',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Desafio $label concluido',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFB6C2D3),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Icon(Icons.emoji_events_rounded, color: AppTheme.warning),
+        ],
+      ),
+    );
   }
 }
 
