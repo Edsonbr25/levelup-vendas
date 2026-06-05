@@ -8,9 +8,10 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: LevelUpApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('LevelUp Vendas'), findsWidgets);
+    expect(find.text('Edson - Coordenador'), findsOneWidget);
+    expect(find.text('I Like Mobis - P 01 | JOÃO PESSOA'), findsOneWidget);
     expect(find.text('Dashboard'), findsWidgets);
-    expect(find.text('Venda individual hoje'), findsOneWidget);
+    expect(find.text('Resumo geral'), findsOneWidget);
   });
 
   for (final size in const [Size(375, 667), Size(390, 844), Size(412, 915)]) {
@@ -25,13 +26,13 @@ void main() {
       await tester.pumpWidget(const ProviderScope(child: LevelUpApp()));
       await tester.pumpAndSettle();
 
-      expect(find.text('LevelUp Vendas'), findsWidgets);
+      expect(find.text('Edson - Coordenador'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('Proximo nivel'),
+        find.text('Ranking de desafios'),
         420,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('Proximo nivel'), findsOneWidget);
+      expect(find.text('Ranking de desafios'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

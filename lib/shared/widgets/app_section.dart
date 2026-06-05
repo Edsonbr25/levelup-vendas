@@ -8,18 +8,30 @@ class AppSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 12),
-        child,
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 430;
+
+        return Column(
+          crossAxisAlignment: isCompact
+              ? CrossAxisAlignment.center
+              : CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                title,
+                textAlign: isCompact ? TextAlign.center : TextAlign.start,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
+        );
+      },
     );
   }
 }

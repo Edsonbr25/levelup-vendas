@@ -3,34 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/commission_calculator.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../features/gamificacao/application/level_up_controller.dart';
-import '../../../features/gamificacao/domain/level_up_state.dart';
+import '../../../features/equipe/application/team_controller.dart';
+import '../../../features/equipe/domain/team_challenge.dart';
+import '../../../features/equipe/domain/team_state.dart';
 import '../../../shared/widgets/app_section.dart';
-import '../../../shared/widgets/challenge_summary_card.dart';
-import '../../../shared/widgets/circular_goal_card.dart';
 import '../../../shared/widgets/data_status_banner.dart';
-import '../../../shared/widgets/level_badge.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
-import '../../../shared/widgets/next_level_card.dart';
 import '../../../shared/widgets/premium_card.dart';
-import '../../../shared/widgets/progress_metric_card.dart';
 import '../../../shared/widgets/responsive_grid.dart';
-import '../../../shared/widgets/sales_chart_card.dart';
-import '../../../shared/widgets/streak_card.dart';
-import '../../../shared/widgets/xp_progress_card.dart';
+import '../../../shared/widgets/stat_card.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncState = ref.watch(levelUpProvider);
-    final state = asyncState.value ?? LevelUpState.initialMock();
-    final isInitialLoading = asyncState.isLoading && !asyncState.hasValue;
+    final asyncState = ref.watch(teamProvider);
+    final state = asyncState.value ?? TeamState.mock();
 
-    if (isInitialLoading) {
+    if (asyncState.isLoading && !asyncState.hasValue) {
       return const _DashboardSkeleton();
     }
 
@@ -45,682 +37,474 @@ class DashboardPage extends ConsumerWidget {
         DataStatusBanner(
           state: state,
           isLoading: asyncState.isLoading,
-          onRefresh: () => ref.read(levelUpProvider.notifier).refresh(),
+          onRefresh: () => ref.read(teamProvider.notifier).refresh(),
         ),
-        _HeroHeader(state: state),
-        const SizedBox(height: 24),
-        ResponsiveGrid(
-          children: [
-            ChallengeSummaryCard(
-              title: 'Venda individual hoje',
-              value: money(state.dailyIndividualSale),
-              subtitle:
-                  'Meta diaria semanal: ${money(state.dailyIndividualGoal)}',
-              icon: Icons.person_rounded,
-            ),
-            ChallengeSummaryCard(
-              title: 'Venda loja hoje',
-              value: money(state.dailyStoreSale),
-              subtitle: 'Meta diaria semanal: ${money(state.dailyStoreGoal)}',
-              icon: Icons.storefront_rounded,
-              color: AppTheme.secondary,
-            ),
-            StreakCard(streak: state.goalStreak),
-          ],
-        ),
-        const SizedBox(height: 24),
-        _CommissionCurrentCard(state: state),
+        _Header(state: state),
         const SizedBox(height: 24),
         AppSection(
-          title: 'Ganhos em desafios',
+          title: 'Resumo geral',
           child: ResponsiveGrid(
             children: [
-              ChallengeSummaryCard(
-                title: 'Total do mes',
-                value: money(state.monthlyChallengeTotal),
-                subtitle: 'Todos os desafios registrados',
-                icon: Icons.emoji_events_rounded,
-                color: AppTheme.primary,
+              StatCard(
+                title: 'Venda total loja',
+                value: money(state.monthlyStoreSales),
+                subtitle: 'Meta mensal ${money(state.monthlyStoreGoal)}',
+                icon: Icons.storefront_rounded,
               ),
-              ChallengeSummaryCard(
-                title: 'Meta loja',
-                value: money(state.monthlyStoreGoalChallengeTotal),
-                subtitle: 'Acumulado no mes atual',
-                icon: Icons.store_mall_directory_rounded,
+              StatCard(
+                title: 'Venda equipe',
+                value: money(state.monthlyTeamSales),
+                subtitle: '${state.sellers.length} vendedores ativos',
+                icon: Icons.groups_rounded,
                 color: AppTheme.secondary,
               ),
-              ChallengeSummaryCard(
-                title: 'P.A',
-                value: money(state.monthlyPaChallengeTotal),
-                subtitle: 'Acumulado no mes atual',
-                icon: Icons.groups_rounded,
+              StatCard(
+                title: 'Desafios',
+                value: money(state.monthlyChallengeTotal),
+                subtitle: 'Acumulado no mes',
+                icon: Icons.emoji_events_rounded,
                 color: AppTheme.warning,
               ),
-              ChallengeSummaryCard(
-                title: 'Maior boleta',
-                value: money(state.monthlyBiggestTicketChallengeTotal),
-                subtitle: 'Acumulado no mes atual',
-                icon: Icons.receipt_long_rounded,
+              StatCard(
+                title: 'Comissao estimada',
+                value: money(state.estimatedCommissionTotal),
+                subtitle: 'Equipe + loja',
+                icon: Icons.payments_rounded,
                 color: AppTheme.danger,
               ),
             ],
           ),
         ),
         const SizedBox(height: 24),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 820;
-            final weeklyChart = SalesChartCard(
-              title: 'Vendas da semana',
-              subtitle: state.weeklyPeriodLabel,
-              primaryValues: state.weeklyIndividualChart,
-              secondaryValues: state.weeklyStoreChart,
-              primaryLabel: 'Eu',
-              secondaryLabel: 'Loja',
-            );
-            final monthlyChart = SalesChartCard(
-              title: 'Evolucao mensal',
-              subtitle: 'Tendencia por blocos do mes',
-              primaryValues: state.monthlyIndividualChart,
-              secondaryValues: state.monthlyStoreChart,
-              primaryLabel: 'Eu',
-              secondaryLabel: 'Loja',
-            );
-
-            return isWide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: weeklyChart),
-                      const SizedBox(width: 14),
-                      Expanded(child: monthlyChart),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      weeklyChart,
-                      const SizedBox(height: 14),
-                      monthlyChart,
-                    ],
-                  );
-          },
+        AppSection(
+          title: 'Ranking de vendas',
+          child: _SalesRanking(state: state),
         ),
         const SizedBox(height: 24),
         AppSection(
-          title: 'Progresso',
+          title: 'Ranking de desafios',
           child: Column(
             children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 760;
-                  final individualGoal = CircularGoalCard(
-                    title: 'Meta mensal individual',
-                    percentValue: state.monthlyIndividualPercent,
-                    amount: state.monthlyIndividualSales,
-                    goal: state.monthlyIndividualGoal,
-                  );
-                  final storeGoal = CircularGoalCard(
-                    title: 'Meta mensal loja',
-                    percentValue: state.monthlyStorePercent,
-                    amount: state.monthlyStoreSales,
-                    goal: state.monthlyStoreGoal,
-                    color: AppTheme.secondary,
-                  );
-                  return isWide
-                      ? Row(
-                          children: [
-                            Expanded(child: individualGoal),
-                            const SizedBox(width: 14),
-                            Expanded(child: storeGoal),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            individualGoal,
-                            const SizedBox(height: 14),
-                            storeGoal,
-                          ],
-                        );
-                },
-              ),
+              _ChallengeRankingBlock(title: 'Geral', state: state),
               const SizedBox(height: 14),
-              ResponsiveGrid(
-                children: [
-                  ProgressMetricCard(
-                    title: 'Mensal individual',
-                    value: state.monthlyIndividualPercent,
-                    subtitle:
-                        '${money(state.monthlyIndividualSales)} realizados',
-                  ),
-                  ProgressMetricCard(
-                    title: 'Semanal individual',
-                    value: state.weeklyIndividualPercent,
-                    subtitle:
-                        '${money(state.weeklyIndividualSales)} | ${state.weeklyPeriodLabel}',
-                    color: AppTheme.secondary,
-                  ),
-                  ProgressMetricCard(
-                    title: 'Mensal loja',
-                    value: state.monthlyStorePercent,
-                    subtitle: '${money(state.monthlyStoreSales)} realizados',
-                    color: AppTheme.warning,
-                  ),
-                  ProgressMetricCard(
-                    title: 'Semanal loja',
-                    value: state.weeklyStorePercent,
-                    subtitle:
-                        '${money(state.weeklyStoreSales)} | ${state.weeklyPeriodLabel}',
-                    color: AppTheme.danger,
-                  ),
-                ],
-              ),
+              for (final type in TeamChallengeType.values) ...[
+                _ChallengeRankingBlock(
+                  title: type.label,
+                  state: state,
+                  type: type,
+                ),
+                if (type != TeamChallengeType.values.last)
+                  const SizedBox(height: 14),
+              ],
             ],
           ),
-        ),
-        const SizedBox(height: 24),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 760;
-            final xpCard = XpProgressCard(
-              xp: state.xp,
-              target: state.nextLevelTarget,
-              level: state.level,
-              nextLevel: state.nextLevel,
-              progress: state.nextLevelProgress,
-            );
-            final nextCard = NextLevelCard(
-              nextLevel: state.nextLevel,
-              xpToNext: state.xpToNextLevel,
-            );
-            if (!isWide) {
-              return Column(
-                children: [
-                  xpCard,
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 268,
-                    child: nextCard,
-                  ),
-                ],
-              );
-            }
-            final rowChildren = [
-              Expanded(flex: 2, child: xpCard),
-              const SizedBox(width: 14),
-              Expanded(child: nextCard),
-            ];
-            return Row(children: rowChildren);
-          },
         ),
       ],
     );
   }
 }
 
-class _CommissionCurrentCard extends StatelessWidget {
-  const _CommissionCurrentCard({required this.state});
+class _Header extends StatelessWidget {
+  const _Header({required this.state});
 
-  final LevelUpState state;
+  final TeamState state;
 
   @override
   Widget build(BuildContext context) {
-    final individual = state.individualCommission;
-    final store = state.storeCommission;
+    final isCompact = MediaQuery.sizeOf(context).width < 390;
 
     return PremiumCard(
-      glowColor: AppTheme.warning,
-      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 430 ? 16 : 20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: isCompact
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < 520;
-              final title = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Comissao atual',
-                    style: TextStyle(
-                      color: Color(0xFFB6C2D3),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    money(state.estimatedCommission),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              );
-              final message = _CommissionMessage(
-                result: _messageResult(individual, store),
-              );
-
-              if (isCompact) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [title, const SizedBox(height: 12), message],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: title),
-                  const SizedBox(width: 16),
-                  Expanded(child: message),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 720;
-              final individualCard = _CommissionDetailCard(
-                title: 'Individual',
-                result: individual,
-                color: AppTheme.primary,
-              );
-              final storeCard = _CommissionDetailCard(
-                title: 'Loja',
-                result: store,
-                color: AppTheme.secondary,
-              );
-
-              return isWide
-                  ? Row(
-                      children: [
-                        Expanded(child: individualCard),
-                        const SizedBox(width: 12),
-                        Expanded(child: storeCard),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        individualCard,
-                        const SizedBox(height: 12),
-                        storeCard,
-                      ],
-                    );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  CommissionResult _messageResult(
-    CommissionResult individual,
-    CommissionResult store,
-  ) {
-    if (!individual.isCommissioning && !store.isCommissioning) {
-      return individual.amountToFirstBand <= store.amountToFirstBand
-          ? individual
-          : store;
-    }
-
-    final candidates = [
-      individual,
-      store,
-    ].where((result) => result.hasNextBand).toList();
-    if (candidates.isEmpty) {
-      return individual.commission >= store.commission ? individual : store;
-    }
-
-    candidates.sort((a, b) => a.amountToNextBand.compareTo(b.amountToNextBand));
-    return candidates.first;
-  }
-}
-
-class _CommissionMessage extends StatelessWidget {
-  const _CommissionMessage({required this.result});
-
-  final CommissionResult result;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = !result.isCommissioning
-        ? 'Faltam ${money(result.amountToFirstBand)} para começar a comissionar'
-        : result.hasNextBand
-        ? 'Faltam ${money(result.amountToNextBand)} para proxima faixa'
-        : 'Voce ja esta comissionando nesta faixa';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.warning.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.warning.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        text,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: AppTheme.warning,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
-class _CommissionDetailCard extends StatelessWidget {
-  const _CommissionDetailCard({
-    required this.title,
-    required this.result,
-    required this.color,
-  });
-
-  final String title;
-  final CommissionResult result;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFFB6C2D3),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              _RateBadge(rate: result.appliedRate, color: color),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _CommissionLine(label: 'Venda no mes', value: money(result.sales)),
-          const SizedBox(height: 6),
-          _CommissionLine(
-            label: 'Meta atingida',
-            value: percent(result.percentReached),
-          ),
-          const SizedBox(height: 6),
-          _CommissionLine(
-            label: 'Comissao',
-            value: money(result.commission),
-            strong: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CommissionLine extends StatelessWidget {
-  const _CommissionLine({
-    required this.label,
-    required this.value,
-    this.strong = false,
-  });
-
-  final String label;
-  final String value;
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFFB6C2D3)),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.end,
-            style: TextStyle(
-              fontWeight: strong ? FontWeight.w900 : FontWeight.w800,
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              '${AppConstants.userName} - ${AppConstants.userRole}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: isCompact ? TextAlign.center : TextAlign.start,
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RateBadge extends StatelessWidget {
-  const _RateBadge({required this.rate, required this.color});
-
-  final double rate;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.24)),
-      ),
-      child: Text(
-        formatRate(rate),
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroHeader extends StatelessWidget {
-  const _HeroHeader({required this.state});
-
-  final LevelUpState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumCard(
-      padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 430 ? 18 : 22),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isCompact = constraints.maxWidth < 390;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppConstants.appName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                height: 1.05,
-                                fontSize: isCompact ? 34 : null,
-                              ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Edson | Coordenador',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: const Color(0xFFB6C2D3),
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'I Like Mobis - P 15 WALLIG',
-                              maxLines: 1,
-                              softWrap: false,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    color: const Color(0xFFB6C2D3),
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  LevelBadge(level: state.level),
-                ],
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: isCompact ? Alignment.center : Alignment.centerLeft,
+            child: Text(
+              AppConstants.storeName,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              softWrap: false,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: const Color(0xFFB6C2D3),
+                fontSize: isCompact ? 14 : null,
+                fontWeight: FontWeight.w800,
               ),
-              const SizedBox(height: 24),
-              LayoutBuilder(
-                builder: (context, pillConstraints) {
-                  final widePill = _HeroPill(
-                    icon: Icons.payments_rounded,
-                    label: 'Comissao',
-                    value: money(state.estimatedCommission),
-                    color: AppTheme.warning,
-                    fullWidth: true,
-                  );
-                  final xpPill = _HeroPill(
-                    icon: Icons.bolt_rounded,
-                    label: 'XP',
-                    value: '${state.xp}',
-                    color: AppTheme.primary,
-                  );
-                  final streakPill = _HeroPill(
-                    icon: Icons.local_fire_department_rounded,
-                    label: 'Streak',
-                    value: '${state.goalStreak}',
-                    color: AppTheme.danger,
-                  );
-                  if (pillConstraints.maxWidth < 430) {
-                    return Column(
-                      children: [
-                        widePill,
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(child: xpPill),
-                            const SizedBox(width: 12),
-                            Expanded(child: streakPill),
-                          ],
-                        ),
-                      ],
-                    );
-                  }
-                  return Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [widePill, xpPill, streakPill],
-                  );
-                },
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: isCompact ? WrapAlignment.center : WrapAlignment.start,
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _InfoPill(
+                icon: Icons.star_rounded,
+                label: 'Melhor vendedor',
+                value: state.bestSeller?.seller.name ?? '-',
+              ),
+              _InfoPill(
+                icon: Icons.emoji_events_rounded,
+                label: 'Mais desafios',
+                value: state.bestChallengeSeller?.sellerName ?? '-',
+                color: AppTheme.warning,
               ),
             ],
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 }
 
-class _HeroPill extends StatelessWidget {
-  const _HeroPill({
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({
     required this.icon,
     required this.label,
     required this.value,
-    required this.color,
-    this.fullWidth = false,
+    this.color = AppTheme.primary,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final Color color;
-  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: fullWidth ? double.infinity : null,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      width: MediaQuery.sizeOf(context).width < 430 ? double.infinity : null,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 240),
-        child: Row(
-          mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+      constraints: const BoxConstraints(maxWidth: 320),
+      child: Row(
+        mainAxisAlignment: MediaQuery.sizeOf(context).width < 430
+            ? MainAxisAlignment.center
+            : MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$label: $value',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: MediaQuery.sizeOf(context).width < 430
+                  ? TextAlign.center
+                  : TextAlign.start,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SalesRanking extends StatelessWidget {
+  const _SalesRanking({required this.state});
+
+  final TeamState state;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.salesRanking.isEmpty) {
+      return const PremiumCard(child: Text('Nenhum vendedor cadastrado.'));
+    }
+
+    return Column(
+      children: [
+        _StoreRankingCard(state: state),
+        const SizedBox(height: 14),
+        for (var index = 0; index < state.salesRanking.length; index++) ...[
+          _SellerRankingCard(
+            ranking: state.salesRanking[index],
+            position: index + 1,
+            highlight: index == 0,
+          ),
+          if (index != state.salesRanking.length - 1)
+            const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+}
+
+class _StoreRankingCard extends StatelessWidget {
+  const _StoreRankingCard({required this.state});
+
+  final TeamState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      glowColor: AppTheme.secondary,
+      child: _RankingRow(
+        position: 0,
+        title: 'Venda total da loja',
+        value: money(state.monthlyStoreSales),
+        subtitle:
+            'Semana ${percent(state.weeklyStorePercent)} | Mes ${percent(_ratio(state.monthlyStoreSales, state.monthlyStoreGoal))}',
+        color: AppTheme.secondary,
+      ),
+    );
+  }
+}
+
+class _SellerRankingCard extends StatelessWidget {
+  const _SellerRankingCard({
+    required this.ranking,
+    required this.position,
+    required this.highlight,
+  });
+
+  final SellerSalesRanking ranking;
+  final int position;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      glowColor: highlight ? AppTheme.warning : AppTheme.primary,
+      child: _RankingRow(
+        position: position,
+        title: ranking.seller.name,
+        value: money(ranking.monthlySales),
+        subtitle:
+            'Semana ${percent(ranking.weeklyPercent)} | Mes ${percent(ranking.monthlyPercent)}',
+        color: highlight ? AppTheme.warning : AppTheme.primary,
+      ),
+    );
+  }
+}
+
+class _RankingRow extends StatelessWidget {
+  const _RankingRow({
+    required this.position,
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.color,
+  });
+
+  final int position;
+  final String title;
+  final String value;
+  final String subtitle;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 430;
+
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                backgroundColor: color.withValues(alpha: 0.18),
+                foregroundColor: color,
+                child: Text(position == 0 ? 'L' : '$position'),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFB6C2D3)),
+              ),
+              const SizedBox(height: 10),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+            ],
+          );
+        }
+
+        return Row(
           children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 8),
-            if (fullWidth) const Spacer(),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: const TextStyle(color: Color(0xFFB6C2D3)),
-                ),
+            CircleAvatar(
+              backgroundColor: color.withValues(alpha: 0.18),
+              foregroundColor: color,
+              child: Text(position == 0 ? 'L' : '$position'),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Color(0xFFB6C2D3)),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
+            const SizedBox(width: 12),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ChallengeRankingBlock extends StatelessWidget {
+  const _ChallengeRankingBlock({
+    required this.title,
+    required this.state,
+    this.type,
+  });
+
+  final String title;
+  final TeamState state;
+  final TeamChallengeType? type;
+
+  @override
+  Widget build(BuildContext context) {
+    final ranking = state.challengeRanking(type: type);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 430;
+
+        return PremiumCard(
+          glowColor: AppTheme.warning,
+          child: Column(
+            crossAxisAlignment: isCompact
+                ? CrossAxisAlignment.center
+                : CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: double.infinity,
                 child: Text(
-                  value,
-                  maxLines: 1,
-                  softWrap: false,
+                  title,
+                  textAlign: isCompact ? TextAlign.center : TextAlign.start,
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
+              const SizedBox(height: 12),
+              if (ranking.isEmpty)
+                const SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    'Nenhum desafio no periodo.',
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else
+                for (
+                  var index = 0;
+                  index < ranking.take(5).length;
+                  index++
+                ) ...[
+                  _ChallengeRankingRow(
+                    position: index + 1,
+                    ranking: ranking[index],
+                  ),
+                  if (index != ranking.take(5).length - 1)
+                    const Divider(height: 18),
+                ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ChallengeRankingRow extends StatelessWidget {
+  const _ChallengeRankingRow({required this.position, required this.ranking});
+
+  final int position;
+  final ChallengeRanking ranking;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 430;
+
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                '$position. ${ranking.sellerName}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${ranking.count}x | ${money(ranking.amount)}',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Text(
+              '$position.',
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                ranking.sellerName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text('${ranking.count}x'),
+            const SizedBox(width: 12),
+            Text(
+              money(ranking.amount),
+              style: const TextStyle(fontWeight: FontWeight.w900),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -733,16 +517,17 @@ class _DashboardSkeleton extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 96),
       children: const [
-        LoadingSkeleton(height: 168),
-        SizedBox(height: 18),
-        LoadingSkeleton(height: 172),
+        LoadingSkeleton(height: 170),
         SizedBox(height: 14),
-        LoadingSkeleton(height: 260),
+        LoadingSkeleton(height: 220),
         SizedBox(height: 14),
-        LoadingSkeleton(height: 260),
-        SizedBox(height: 14),
-        LoadingSkeleton(height: 180),
+        LoadingSkeleton(height: 320),
       ],
     );
   }
+}
+
+double _ratio(double value, double target) {
+  if (target <= 0) return 0;
+  return (value / target) * 100;
 }

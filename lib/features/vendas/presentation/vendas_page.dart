@@ -3,23 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../features/gamificacao/application/level_up_controller.dart';
-import '../../../features/gamificacao/domain/level_up_state.dart';
-import '../../../features/vendas/data/vendas_repository.dart';
-import '../../../features/vendas/domain/sale_entry.dart';
+import '../../../features/equipe/application/team_controller.dart';
+import '../../../features/equipe/domain/seller.dart';
+import '../../../features/equipe/domain/team_sale.dart';
+import '../../../features/equipe/domain/team_state.dart';
 import '../../../shared/widgets/animated_action_button.dart';
 import '../../../shared/widgets/app_section.dart';
 import '../../../shared/widgets/data_status_banner.dart';
-import '../../../shared/widgets/money_field.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/premium_card.dart';
-import '../../../shared/widgets/progress_metric_card.dart';
-import '../../../shared/widgets/stat_card.dart';
-
-final salesHistoryProvider = FutureProvider.autoDispose<List<SaleEntry>>((
-  ref,
-) async {
-  return ref.watch(vendasRepositoryProvider).listSales();
-});
 
 class VendasPage extends ConsumerStatefulWidget {
   const VendasPage({super.key});
@@ -29,16 +21,35 @@ class VendasPage extends ConsumerStatefulWidget {
 }
 
 class _VendasPageState extends ConsumerState<VendasPage> {
-  double _individualSale = 0;
-  double _storeSale = 0;
-  DateTime _saleDate = _yesterday();
-  int _formVersion = 0;
+  final _amountController = TextEditingController();
+  DateTime _saleDate = DateTime.now().subtract(const Duration(days: 1));
+  SaleType _saleType = SaleType.seller;
+  Seller? _seller;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final asyncState = ref.watch(levelUpProvider);
-    final state = asyncState.value ?? LevelUpState.initialMock();
-    final salesHistory = ref.watch(salesHistoryProvider);
+    final asyncState = ref.watch(teamProvider);
+    final state = asyncState.value ?? TeamState.mock();
+
+    if (asyncState.isLoading && !asyncState.hasValue) {
+      return const _SalesSkeleton();
+    }
+
+    if (_seller != null &&
+        !state.sellers.any((seller) => seller.id == _seller?.id)) {
+      _seller = null;
+    }
+    if (_saleType == SaleType.seller &&
+        _seller == null &&
+        state.sellers.isNotEmpty) {
+      _seller = state.sellers.first;
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 96),
@@ -46,92 +57,138 @@ class _VendasPageState extends ConsumerState<VendasPage> {
         DataStatusBanner(
           state: state,
           isLoading: asyncState.isLoading,
-          onRefresh: () {
-            ref.read(levelUpProvider.notifier).refresh();
-            ref.invalidate(salesHistoryProvider);
-          },
+          onRefresh: () => ref.read(teamProvider.notifier).refresh(),
         ),
-        Text(
-          'Vendas',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
+        SizedBox(
+          width: double.infinity,
+          child: Text(
+            'Vendas',
+            textAlign: MediaQuery.sizeOf(context).width < 430
+                ? TextAlign.center
+                : TextAlign.start,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
         ),
         const SizedBox(height: 20),
+        if (state.sellers.isEmpty) ...[
+          const _NoSellersWarning(),
+          const SizedBox(height: 18),
+        ],
         AppSection(
-          title: 'Lancamento diario',
+          title: 'Registrar venda',
           child: PremiumCard(
             child: Column(
               children: [
-                _DatePickerTile(
+                _DateTile(
                   label: 'Data da venda',
                   date: _saleDate,
                   onTap: _pickSaleDate,
                 ),
                 const SizedBox(height: 12),
-                MoneyField(
-                  key: ValueKey('individual-sale-$_formVersion'),
-                  label: 'Venda individual diaria',
-                  initialValue: _individualSale,
-                  onChanged: (value) => _individualSale = parseMoney(value),
+                SegmentedButton<SaleType>(
+                  segments: const [
+                    ButtonSegment(
+                      value: SaleType.seller,
+                      label: Text('Vendedor'),
+                      icon: Icon(Icons.person_rounded),
+                    ),
+                    ButtonSegment(
+                      value: SaleType.store,
+                      label: Text('Loja'),
+                      icon: Icon(Icons.storefront_rounded),
+                    ),
+                  ],
+                  selected: {_saleType},
+                  onSelectionChanged: (value) {
+                    setState(() => _saleType = value.first);
+                  },
                 ),
+                if (state.sellers.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<Seller?>(
+                    initialValue:
+                        state.sellers.any((seller) => seller.id == _seller?.id)
+                        ? _seller
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: _saleType == SaleType.store
+                          ? 'Vendedor (opcional)'
+                          : 'Vendedor',
+                      prefixIcon: const Icon(Icons.people_rounded),
+                    ),
+                    items: [
+                      if (_saleType == SaleType.store)
+                        const DropdownMenuItem<Seller?>(
+                          value: null,
+                          child: Text('Sem vendedor / venda loja'),
+                        ),
+                      for (final seller in state.sellers)
+                        DropdownMenuItem(
+                          value: seller,
+                          child: Text(seller.name),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _seller = value),
+                  ),
+                ],
                 const SizedBox(height: 12),
-                MoneyField(
-                  key: ValueKey('store-sale-$_formVersion'),
-                  label: 'Venda loja diaria',
-                  initialValue: _storeSale,
-                  onChanged: (value) => _storeSale = parseMoney(value),
+                TextField(
+                  controller: _amountController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Valor da venda',
+                    prefixIcon: Icon(Icons.attach_money_rounded),
+                  ),
                 ),
                 const SizedBox(height: 18),
                 AnimatedActionButton(
-                  onPressed: asyncState.isLoading ? null : _createSale,
-                  icon: Icons.check_circle_rounded,
+                  onPressed: asyncState.isLoading ? null : () => _createSale(),
+                  icon: Icons.point_of_sale_rounded,
                   label: 'Salvar venda',
+                  expand: true,
                 ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 24),
-        ProgressMetricCard(
-          title: 'Percentual mensal individual',
-          value: state.monthlyIndividualPercent,
-          subtitle:
-              '${money(state.monthlyIndividualSales)} no mes | comissao ${state.individualCommissionRate}%',
-        ),
-        const SizedBox(height: 14),
-        ProgressMetricCard(
-          title: 'Percentual mensal loja',
-          value: state.monthlyStorePercent,
-          subtitle:
-              '${money(state.monthlyStoreSales)} no mes | comissao ${state.storeCommissionRate}%',
-          color: AppTheme.secondary,
-        ),
-        const SizedBox(height: 14),
-        StatCard(
-          title: 'Comissao atualizada',
-          value: money(state.estimatedCommission),
-          subtitle: 'Calculada com os totais reais do mes',
-          icon: Icons.payments_rounded,
-          color: AppTheme.warning,
-        ),
-        const SizedBox(height: 24),
         AppSection(
-          title: 'Historico de vendas',
-          child: salesHistory.when(
-            loading: () => const PremiumCard(
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, stackTrace) => PremiumCard(
-              glowColor: AppTheme.danger,
-              child: Text('Erro ao carregar vendas: $error'),
-            ),
-            data: (sales) =>
-                _SalesHistory(sales: sales, isLoading: asyncState.isLoading),
-          ),
+          title: 'Historico de vendas do mes',
+          child: _SalesHistory(state: state, isLoading: asyncState.isLoading),
         ),
       ],
     );
+  }
+
+  Future<void> _createSale() async {
+    final amount = parseMoney(_amountController.text);
+    if (amount <= 0) return;
+    if (_saleType == SaleType.seller && _seller == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Cadastre vendedores na tela Metas para registrar vendas individuais.',
+          ),
+        ),
+      );
+      return;
+    }
+    await ref
+        .read(teamProvider.notifier)
+        .createSale(
+          TeamSale(
+            date: _saleDate,
+            sellerId: _seller?.id,
+            sellerName: _seller?.name ?? 'Loja',
+            amount: amount,
+            type: _saleType,
+          ),
+        );
+    _amountController.clear();
   }
 
   Future<void> _pickSaleDate() async {
@@ -139,117 +196,212 @@ class _VendasPageState extends ConsumerState<VendasPage> {
       context: context,
       initialDate: _saleDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 730)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-
-    if (selected != null) {
-      setState(() => _saleDate = selected);
-    }
+    if (selected != null) setState(() => _saleDate = selected);
   }
+}
 
-  Future<void> _createSale() async {
-    await ref
-        .read(levelUpProvider.notifier)
-        .createSale(
-          SaleEntry(
-            date: _saleDate,
-            individualSale: _individualSale,
-            storeSale: _storeSale,
-          ),
+class _NoSellersWarning extends StatelessWidget {
+  const _NoSellersWarning();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 430;
+
+        return PremiumCard(
+          glowColor: AppTheme.warning,
+          child: isCompact
+              ? const Column(
+                  children: [
+                    Icon(Icons.info_rounded, color: AppTheme.warning),
+                    SizedBox(height: 10),
+                    Text(
+                      'Cadastre vendedores na tela Metas para registrar vendas individuais.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFFE7D7AA),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_rounded, color: AppTheme.warning),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Cadastre vendedores na tela Metas para registrar vendas individuais.',
+                        style: TextStyle(
+                          color: Color(0xFFE7D7AA),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
         );
-    ref.invalidate(salesHistoryProvider);
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Venda salva com sucesso.')));
-    }
-    setState(() {
-      _individualSale = 0;
-      _storeSale = 0;
-      _saleDate = _yesterday();
-      _formVersion++;
-    });
+      },
+    );
   }
+}
 
-  static DateTime _yesterday() {
-    final now = DateTime.now();
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(const Duration(days: 1));
+class _CenteredEmptyCard extends StatelessWidget {
+  const _CenteredEmptyCard(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumCard(
+      child: SizedBox(
+        width: double.infinity,
+        child: Text(
+          message,
+          textAlign: MediaQuery.sizeOf(context).width < 430
+              ? TextAlign.center
+              : TextAlign.start,
+        ),
+      ),
+    );
   }
 }
 
 class _SalesHistory extends ConsumerWidget {
-  const _SalesHistory({required this.sales, required this.isLoading});
+  const _SalesHistory({required this.state, required this.isLoading});
 
-  final List<SaleEntry> sales;
+  final TeamState state;
   final bool isLoading;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sales = state.monthSales;
     if (sales.isEmpty) {
-      return const PremiumCard(child: Text('Nenhuma venda cadastrada ainda.'));
+      return const _CenteredEmptyCard('Nenhuma venda neste mes.');
     }
-
     return Column(
       children: [
-        for (final sale in sales.take(40)) ...[
-          _SaleHistoryItem(
-            sale: sale,
-            isLoading: isLoading,
-            onEdit: sale.id == null || isLoading
-                ? null
-                : () => _showEditSheet(context, ref, sale),
-            onDelete: sale.id == null || isLoading
-                ? null
-                : () => _confirmDelete(context, ref, sale),
+        for (final sale in sales) ...[
+          PremiumCard(
+            glowColor: sale.type == SaleType.store
+                ? AppTheme.secondary
+                : AppTheme.primary,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 620;
+                final details = Column(
+                  crossAxisAlignment: isCompact
+                      ? CrossAxisAlignment.center
+                      : CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sale.sellerName ?? 'Loja',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: isCompact ? TextAlign.center : TextAlign.start,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '${_dateLabel(sale.date)} | ${sale.type.label}',
+                      textAlign: isCompact ? TextAlign.center : TextAlign.start,
+                      style: const TextStyle(color: Color(0xFFB6C2D3)),
+                    ),
+                  ],
+                );
+                final value = Text(
+                  money(sale.amount),
+                  textAlign: isCompact ? TextAlign.center : TextAlign.start,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                );
+                final actions = Wrap(
+                  alignment: isCompact
+                      ? WrapAlignment.center
+                      : WrapAlignment.start,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: isLoading
+                          ? null
+                          : () => _editSale(context, ref, sale, state.sellers),
+                      icon: const Icon(Icons.edit_rounded),
+                      label: const Text('Editar'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: isLoading
+                          ? null
+                          : () => _deleteSale(context, ref, sale),
+                      icon: const Icon(Icons.delete_rounded),
+                      label: const Text('Excluir'),
+                    ),
+                  ],
+                );
+                if (isCompact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      details,
+                      const SizedBox(height: 10),
+                      value,
+                      const SizedBox(height: 14),
+                      actions,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: details),
+                    value,
+                    const SizedBox(width: 16),
+                    actions,
+                  ],
+                );
+              },
+            ),
           ),
-          if (sale != sales.take(40).last) const SizedBox(height: 12),
+          if (sale != sales.last) const SizedBox(height: 12),
         ],
       ],
     );
   }
 
-  Future<void> _showEditSheet(
+  Future<void> _editSale(
     BuildContext context,
     WidgetRef ref,
-    SaleEntry sale,
+    TeamSale sale,
+    List<Seller> sellers,
   ) async {
-    final updated = await showModalBottomSheet<SaleEntry>(
+    final updated = await showModalBottomSheet<TeamSale>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (context) => _EditSaleSheet(sale: sale),
+      builder: (context) => _SaleEditSheet(sale: sale, sellers: sellers),
     );
-
     if (updated != null) {
-      await ref.read(levelUpProvider.notifier).updateSale(updated);
-      ref.invalidate(salesHistoryProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Venda atualizada com sucesso.')),
-        );
-      }
+      await ref.read(teamProvider.notifier).updateSale(updated);
     }
   }
 
-  Future<void> _confirmDelete(
+  Future<void> _deleteSale(
     BuildContext context,
     WidgetRef ref,
-    SaleEntry sale,
+    TeamSale sale,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Excluir venda?'),
-        content: Text(
-          'Esta acao removera a venda de ${_dateLabel(sale.date)}.',
-        ),
+        content: Text('Remover venda de ${money(sale.amount)}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -262,215 +414,97 @@ class _SalesHistory extends ConsumerWidget {
         ],
       ),
     );
-
     if (confirmed == true) {
-      await ref.read(levelUpProvider.notifier).deleteSale(sale);
-      ref.invalidate(salesHistoryProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Venda excluida com sucesso.')),
-        );
-      }
+      await ref.read(teamProvider.notifier).deleteSale(sale);
     }
   }
 }
 
-class _SaleHistoryItem extends StatelessWidget {
-  const _SaleHistoryItem({
-    required this.sale,
-    required this.isLoading,
-    required this.onEdit,
-    required this.onDelete,
-  });
+class _SaleEditSheet extends StatefulWidget {
+  const _SaleEditSheet({required this.sale, required this.sellers});
 
-  final SaleEntry sale;
-  final bool isLoading;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
+  final TeamSale sale;
+  final List<Seller> sellers;
 
   @override
-  Widget build(BuildContext context) {
-    return PremiumCard(
-      glowColor: AppTheme.secondary,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final content = [
-            _SaleMetric(
-              label: 'Data',
-              value: _dateLabel(sale.date),
-              icon: Icons.event_rounded,
-            ),
-            _SaleMetric(
-              label: 'Individual',
-              value: money(sale.individualSale),
-              icon: Icons.person_rounded,
-            ),
-            _SaleMetric(
-              label: 'Loja',
-              value: money(sale.storeSale),
-              icon: Icons.storefront_rounded,
-            ),
-          ];
-          final actions = Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              OutlinedButton.icon(
-                onPressed: isLoading ? null : onEdit,
-                icon: const Icon(Icons.edit_rounded),
-                label: const Text('Editar'),
-              ),
-              FilledButton.icon(
-                onPressed: isLoading ? null : onDelete,
-                icon: const Icon(Icons.delete_rounded),
-                label: const Text('Excluir'),
-              ),
-            ],
-          );
-
-          if (constraints.maxWidth < 620) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final item in content) ...[
-                  item,
-                  if (item != content.last) const SizedBox(height: 12),
-                ],
-                const SizedBox(height: 16),
-                SizedBox(width: double.infinity, child: actions),
-              ],
-            );
-          }
-
-          return Row(
-            children: [
-              for (final item in content) Expanded(child: item),
-              const SizedBox(width: 14),
-              actions,
-            ],
-          );
-        },
-      ),
-    );
-  }
+  State<_SaleEditSheet> createState() => _SaleEditSheetState();
 }
 
-class _SaleMetric extends StatelessWidget {
-  const _SaleMetric({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: AppTheme.primary, size: 22),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFFB6C2D3)),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EditSaleSheet extends StatefulWidget {
-  const _EditSaleSheet({required this.sale});
-
-  final SaleEntry sale;
-
-  @override
-  State<_EditSaleSheet> createState() => _EditSaleSheetState();
-}
-
-class _EditSaleSheetState extends State<_EditSaleSheet> {
-  late final TextEditingController _individualController;
-  late final TextEditingController _storeController;
+class _SaleEditSheetState extends State<_SaleEditSheet> {
+  late final TextEditingController _amountController;
   late DateTime _date;
+  late SaleType _type;
+  Seller? _seller;
 
   @override
   void initState() {
     super.initState();
-    _individualController = TextEditingController(
-      text: widget.sale.individualSale.toStringAsFixed(2).replaceAll('.', ','),
-    );
-    _storeController = TextEditingController(
-      text: widget.sale.storeSale.toStringAsFixed(2).replaceAll('.', ','),
+    _amountController = TextEditingController(
+      text: widget.sale.amount.toStringAsFixed(2).replaceAll('.', ','),
     );
     _date = widget.sale.date;
+    _type = widget.sale.type;
+    _seller = widget.sellers
+        .where((seller) => seller.id == widget.sale.sellerId)
+        .firstOrNull;
   }
 
   @override
   void dispose() {
-    _individualController.dispose();
-    _storeController.dispose();
+    _amountController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
-
     return Padding(
       padding: EdgeInsets.fromLTRB(18, 18, 18, bottom + 18),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Editar venda',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          _DateTile(label: 'Data da venda', date: _date, onTap: _pickDate),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<SaleType>(
+            initialValue: _type,
+            decoration: const InputDecoration(labelText: 'Tipo'),
+            items: [
+              for (final type in SaleType.values)
+                DropdownMenuItem(value: type, child: Text(type.label)),
+            ],
+            onChanged: (value) => setState(() => _type = value ?? _type),
+          ),
+          if (widget.sellers.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<Seller?>(
+              initialValue:
+                  widget.sellers.any((seller) => seller.id == _seller?.id)
+                  ? _seller
+                  : null,
+              decoration: InputDecoration(
+                labelText: _type == SaleType.store
+                    ? 'Vendedor (opcional)'
+                    : 'Vendedor',
+              ),
+              items: [
+                if (_type == SaleType.store)
+                  const DropdownMenuItem<Seller?>(
+                    value: null,
+                    child: Text('Sem vendedor / venda loja'),
+                  ),
+                for (final seller in widget.sellers)
+                  DropdownMenuItem(value: seller, child: Text(seller.name)),
+              ],
+              onChanged: (value) => setState(() => _seller = value),
+            ),
+          ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Valor'),
           ),
           const SizedBox(height: 16),
-          _DatePickerTile(
-            label: 'Data da venda',
-            date: _date,
-            onTap: _pickDate,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _individualController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Venda individual diaria',
-              prefixIcon: Icon(Icons.attach_money_rounded),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _storeController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Venda loja diaria',
-              prefixIcon: Icon(Icons.attach_money_rounded),
-            ),
-          ),
-          const SizedBox(height: 18),
           AnimatedActionButton(
             onPressed: _save,
             icon: Icons.save_rounded,
@@ -487,27 +521,36 @@ class _EditSaleSheetState extends State<_EditSaleSheet> {
       context: context,
       initialDate: _date,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 730)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-
-    if (selected != null) {
-      setState(() => _date = selected);
-    }
+    if (selected != null) setState(() => _date = selected);
   }
 
   void _save() {
+    if (_type == SaleType.seller && _seller == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Cadastre vendedores na tela Metas para registrar vendas individuais.',
+          ),
+        ),
+      );
+      return;
+    }
     Navigator.of(context).pop(
       widget.sale.copyWith(
         date: _date,
-        individualSale: parseMoney(_individualController.text),
-        storeSale: parseMoney(_storeController.text),
+        type: _type,
+        sellerId: _seller?.id,
+        sellerName: _seller?.name ?? 'Loja',
+        amount: parseMoney(_amountController.text),
       ),
     );
   }
 }
 
-class _DatePickerTile extends StatelessWidget {
-  const _DatePickerTile({
+class _DateTile extends StatelessWidget {
+  const _DateTile({
     required this.label,
     required this.date,
     required this.onTap,
@@ -526,40 +569,33 @@ class _DatePickerTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              const Icon(Icons.event_rounded, color: Color(0xFFB6C2D3)),
+              const Icon(Icons.event_rounded),
               const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFFB6C2D3),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _dateLabel(date),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                  ],
-                ),
-              ),
+              Expanded(child: Text('$label: ${_dateLabel(date)}')),
               const Icon(Icons.expand_more_rounded),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SalesSkeleton extends StatelessWidget {
+  const _SalesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 96),
+      children: const [
+        LoadingSkeleton(height: 180),
+        SizedBox(height: 14),
+        LoadingSkeleton(height: 220),
+      ],
     );
   }
 }

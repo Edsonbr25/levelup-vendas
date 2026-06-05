@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../features/gamificacao/domain/level_up_state.dart';
 
 class DataStatusBanner extends StatelessWidget {
   const DataStatusBanner({
@@ -11,7 +10,7 @@ class DataStatusBanner extends StatelessWidget {
     required this.onRefresh,
   });
 
-  final LevelUpState state;
+  final dynamic state;
   final bool isLoading;
   final VoidCallback onRefresh;
 
