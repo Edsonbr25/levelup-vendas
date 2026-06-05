@@ -78,10 +78,12 @@ class TeamController extends AsyncNotifier<TeamState> {
     try {
       await operation();
       state = AsyncData(await _load());
-    } catch (error) {
-      debugPrint('Team fallback after mutation error: $error');
+    } catch (error, stackTrace) {
+      final fullError = _fullError(error);
+      debugPrint('Team fallback after mutation error:\n$fullError');
+      debugPrintStack(stackTrace: stackTrace);
       state = AsyncData(
-        previous.copyFallback('Operacao local temporaria: $error'),
+        previous.copyFallback('Operacao local temporaria:\n$fullError'),
       );
     }
   }
@@ -91,10 +93,16 @@ class TeamController extends AsyncNotifier<TeamState> {
       return await ref
           .read(teamRepositoryProvider)
           .fetchState(start: _periodStart, end: _periodEnd);
-    } catch (error) {
-      debugPrint('Team fallback after load error: $error');
-      return TeamState.mock().copyFallback(error.toString());
+    } catch (error, stackTrace) {
+      final fullError = _fullError(error);
+      debugPrint('Team fallback after load error:\n$fullError');
+      debugPrintStack(stackTrace: stackTrace);
+      return TeamState.mock().copyFallback(fullError);
     }
+  }
+
+  String _fullError(Object error) {
+    return error.toString();
   }
 }
 

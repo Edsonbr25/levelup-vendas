@@ -71,8 +71,6 @@ class _FallbackMessage extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             errorMessage!,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: const Color(0xFFB6C2D3)),
