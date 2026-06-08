@@ -1,28 +1,67 @@
 {
   "name": "LevelUp Vendas",
-  "short_name": "LevelUp",
-  "description": "Dashboard pessoal de vendas, metas, comissoes e desafios.",
+  "short_name": "LevelUp Vendas",
+  "description": "Controle de vendas, metas e comissões",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#050816",
+  "theme_color": "#050816",
   "orientation": "portrait-primary",
-  "background_color": "#090B10",
-  "theme_color": "#090B10",
   "categories": ["business", "finance", "productivity"],
   "lang": "pt-BR",
   "dir": "ltr",
   "prefer_related_applications": false,
   "icons": [
-    { "src": "icons/Icon-48.png", "sizes": "48x48", "type": "image/png", "purpose": "any" },
-    { "src": "icons/Icon-72.png", "sizes": "72x72", "type": "image/png", "purpose": "any" },
-    { "src": "icons/Icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
-    { "src": "icons/Icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
-    { "src": "icons/Icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/Icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/Icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/Icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/Icon-48.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/Icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/Icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/Icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/Icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/Icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable_icon_x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/maskable_icon_x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
     {

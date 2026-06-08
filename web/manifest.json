@@ -1,15 +1,14 @@
 {
   "name": "LevelUp Vendas",
   "short_name": "LevelUp Vendas",
-  "description": "Dashboard pessoal de vendas, metas, comissoes e desafios.",
+  "description": "Controle de vendas, metas e comissões",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#050816",
+  "theme_color": "#050816",
   "orientation": "portrait-primary",
-  "background_color": "#090B10",
-  "theme_color": "#090B10",
   "categories": ["business", "finance", "productivity"],
   "lang": "pt-BR",
   "dir": "ltr",
@@ -52,13 +51,13 @@
       "purpose": "any"
     },
     {
-      "src": "icons/Icon-maskable-192.png",
+      "src": "icons/maskable_icon_x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icons/Icon-maskable-512.png",
+      "src": "icons/maskable_icon_x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
